@@ -221,6 +221,31 @@ test('metadata durations and proposed edit lengths are not mistaken for observed
   }
 });
 
+test('conditional editing experiments do not assert a measured outcome or authorize nearby promises',async()=>{
+ for(const text of ['Test if the abrupt transition improves viewer retention.','Test whether the alternate crop changes engagement.','Test if viewer retention improves.','Test whether engagement changes.']){
+  await withProvider(respond(narrative({sections:[{heading:'Editing experiment',text,timestamps:[0,5.5]}]})),async env=>{
+   const result=await analyzeVideo(attachment(),'Suggest one visual editing experiment to test.',env);
+   assert.ok(result.sections[0].text.endsWith(text));
+  });
+ }
+ for(const text of [
+  'Test retention with this cut.',
+  'Test if this cut will definitely improve retention.',
+  'Test if the cut improves retention; this guarantees more views.',
+  'Test if the cut improves retention. This improves engagement.',
+  'Test if the cut improves retention: this improves engagement.',
+  'Test if the cut improves retention and this guarantees engagement.',
+  'Test if the cut improves retention, a change that increases views.',
+  'Test if the cut changes retention – this increases engagement.',
+  'Test if the cut changes retention (this increases engagement).',
+  'Test if retention improves!This improves engagement.',
+  'Test if the crop works - this improves retention.',
+  'Test if the crop works--this improves retention.',
+  'Test if this cut could improve retention and this guarantees views.',
+  'Experiment with a cut that might improve retention but will boost likes.'
+ ])await withProvider(respond(narrative({sections:[{heading:'Editing experiment',text,timestamps:[0,5.5]}]})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Suggest an editing test.',env),'provider-invalid-response',502));
+});
+
 test('repeated citations to the same supplied frame are normalized without adding evidence',async()=>{
   await withProvider(respond(narrative({sections:[{heading:'Opening',text:'The sampled opening shows the product.',timestamps:[0,0]}]})),async env=>{
     const value=await analyzeVideo(attachment(),'Review this opening',env);

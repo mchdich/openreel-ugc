@@ -6,7 +6,7 @@ An independently written, open source recreation working toward full parity with
 
 **Full 1:1 parity remains open.** The normal local product corpus now serves **154,424 real records across 4,621 creator identities** through the API and browser. The separately verified hosted corpus contains **4,424 real records**. Real local speech/vision inference also works, with documented interpretation errors. Broad profile and critique quality, current trend evidence, complete visual-state verification and hosted AI remain open. See [the parity matrix](docs/PARITY.md) and [verification record](docs/VERIFICATION.md).
 
-[Hosted app](https://openreel-ugc-mchdich.red-boar-0376.chatgpt.site/) · [Source](https://github.com/mchdich/openreel-ugc) · [CI](https://github.com/mchdich/openreel-ugc/actions/workflows/ci.yml). The source includes the 1.3.1 result-layout and saved-source fixes. Exact matching publication/deployment checks are recorded with each source release artifact.
+[Hosted app](https://openreel-ugc-mchdich.red-boar-0376.chatgpt.site/) · [Source](https://github.com/mchdich/openreel-ugc) · [CI](https://github.com/mchdich/openreel-ugc/actions/workflows/ci.yml). The source includes saved-source continuity, bounded public-player metadata collection and configurable local chat deadlines. Exact matching publication/deployment checks are recorded with each source release artifact.
 
 The starter library is fictional. Free creator collection and deterministic library research work without paid credentials. Lightreel’s private index, application source, proprietary models, and demo media are not included.
 
@@ -52,6 +52,8 @@ node scripts/corpus.js stats --db data/corpus.sqlite
 
 `handles.txt` contains one known public handle per line. Collection is sequential, deduplicated, and makes one request per handle without automatic retries. To expose that local database in the app, set `OPENREEL_CORPUS_PATH=data/corpus.sqlite` before starting Node.
 
+An optional [public-player collector](docs/CORPUS.md#optional-public-player-metadata-collection) resolves public handles, links, covers and avatars for explicitly supplied post IDs. It uses a separately installed browser, emits evidence for review, and applies a bounded metadata delta to an existing local corpus. The transactional merge preserves archival text, dates, metrics, licenses and ingestion verification. Four actual cited records were merged and displayed with loaded covers/avatars; the unavailable fifth remained unknown. Acquired reports and creator media are excluded from the source release.
+
 The normal local database at `data/research-nc.sqlite` now contains **154,424 real records, 4,621 creator identities and 262 provider-observed records**, with zero example, synthetic or unverified rows. It combines the 150,000-record [optional research archive](docs/RESEARCH_DATA.md), 4,162 publisher-declared MIT archival records and 262 fresh public-profile/video records. Actual Deep API queries returned cited skincare, cooking and unboxing records; a native Windows browser displayed, bookmarked and restored an actual numeric-ID source after reload. Use `OPENREEL_CORPUS_PATH=data/research-nc.sqlite npm start` with that acquired database. Databases and acquired data are excluded from the source release.
 
 The smaller hosted D1 snapshot at **2026-10-17T21:30:57.284Z** contained **4,424 real records**: the 4,162 archival plus 262 fresh records, with zero examples or synthetic rows. Hosted NYU and UCLA searches combining followers and email in bio returned one and two creators; UCLA evidence includes explicit alum/alumna descriptions. That cloud import remains `user-supplied` with `providerObservedReal: 0`; it is distinct from the full local store and its provenance counts.
@@ -83,6 +85,7 @@ Missing or invalid providers produce explicit errors, with no simulated audiovis
 | `OPENAI_API_KEY` | Server-side model credential; local no-auth models can use a local placeholder. |
 | `OPENAI_BASE_URL` | Chat/vision base; default `https://api.openai.com/v1`. |
 | `OPENAI_MODEL` | Text model; text synthesis defaults to `gpt-4.1-mini`. |
+| `OPENREEL_CHAT_TIMEOUT_MS` | Text synthesis deadline; default 25,000 ms, configurable from 10,000–180,000. The browser uses the validated public budget. |
 | `OPENAI_VISION_MODEL` | Vision model; falls back to an explicitly configured text model. |
 | `OPENAI_VISION_RESPONSE_FORMAT` | `json_schema` by default; optional legacy `json_object`. |
 | `OPENREEL_VISION_TIMEOUT_MS` | Vision deadline; default 45,000 ms, configurable from 10,000–180,000 for slower providers. |

@@ -90,6 +90,8 @@ OPENAI_TRANSCRIPTION_BASE_URL=http://127.0.0.1:4320/v1
 
 The placeholder is not an account credential; it satisfies the adapter’s nonempty-key requirement for these local no-auth servers. The separate speech base overrides the shared base URL. Vision uses strict JSON Schema by default. `json_object` is a legacy compatibility option and still undergoes local output validation.
 
+Text synthesis keeps its 25,000 ms default. An operator can set `OPENREEL_CHAT_TIMEOUT_MS` to a decimal integer from 10,000 through 180,000 for a slower local model. `/api/status` exposes only that validated request budget so the browser allows synthesis plus request/discovery overhead; the default browser deadline remains 65 seconds. An invalid used setting fails with a sanitized configuration error. Deterministic and dated-count answers do not invoke a text model. This setting does not change vision or speech deadlines, or prove that a model can finish within it.
+
 From the same host that runs Node, confirm the provider listeners:
 
 ```sh
@@ -143,3 +145,43 @@ Use the native Windows Node host for this endpoint: Linux localhost forwarding t
 The GPU completed the byte-identical high-detail request in **102.630 seconds**, with 9,355 prompt tokens, 674 completion tokens and zero cached tokens. Whole-device use reached about 4,625/5,120 MiB and 100% GPU utilization. Production structure validation passed, but semantic quality still failed: seven sections repeated a paragraph, all sections cited the opening timestamp even when discussing the final scene, an unseen cut was asserted, and no useful editing experiment was proposed. Recognizing more visible packages/legs did not establish a dependable critique. There is no broad natural-video accuracy claim or automatic retry.
 
 The GPU runtime is therefore verified for transport, memory fit and this deadline, while natural-video interpretation remains inadequate. Model/context changes require new evidence; neither these settings nor local success configure hosted inference or complete full parity.
+
+## Qwen3 comparison diagnostics
+
+The publisher-owned [2B GGUF revision](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/tree/52d6c8ffea26cc873ac5ad116f8631268d7eb503) and [4B GGUF revision](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct-GGUF/tree/1cd86afb9a95c410a6038ab3b40d8b578c892266) declare Apache 2.0. Each needs its own matching projector; the 2B projector is incompatible with 4B.
+
+| Artifact | Bytes | SHA256 |
+| --- | ---: | --- |
+| `Qwen3VL-2B-Instruct-Q4_K_M.gguf` | 1,107,409,952 | `089d75c52f4b7ffc56ba998ffc50aae89fcafc755f9e7208aacca281dca6c2ae` |
+| `mmproj-Qwen3VL-2B-Instruct-Q8_0.gguf` | 445,053,216 | `f9a68fabba69c3b81e153367b2c7521030b0fa8bb0de400c9599c8e6725f9c82` |
+| `Qwen3VL-4B-Instruct-Q4_K_M.gguf` | 2,497,281,664 | `66358cb18bb6b3b1b6675aa412c7a88ef01d228f481184d13668e5201c730a0a` |
+| `mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf` | 453,974,304 | `30ba2c7dd3127a4561b6cba9d13d0f711c91bdb38742e2f56d73c8cb596bd06d` |
+
+All four files were downloaded from pinned publisher revisions and reread-verified against their LFS SHA256 values. These are additional diagnostics, not recommended dependable critique models.
+
+On the same native CUDA runtime/P2000, Qwen3-VL2B used `--n-gpu-layers 20 --cache-type-k q8_0 --cache-type-v f16 --flash-attn off`, the default GPU projector, 16,384 context and 1,024 minimum/maximum image tokens. The unchanged eight-frame question/schema completed in **68.347 seconds**, with 9,355 prompt tokens, 377 completion tokens and zero cached tokens. Its broad scene description improved, but the proposed experiment invented package opening, cited the final floor frame for that action, and included unsupported performance language. Production rejected it. Two sections contained 203 words against the requested 80.
+
+Three generic system-instruction additions then emphasized visible states, directly relevant citations, supported editing material and requested brevity. Images, question, model, schema and validators remained unchanged. The next actual response took **75.870 seconds**, with 9,573 prompt tokens, 443 completion tokens and 96 cached tokens. It still failed the evidence contract, used three sections/211 words and added unsupported setting/intent claims. The instruction change did not establish an accuracy improvement; one generation per prompt cannot establish a general causal effect.
+
+The 4B pair fit memory with CPU vision, 30 GPU layers, K `q8_0` / V `f16`, FA off, text batch 512/128 and the same 16k context/1,024 image tokens. The identical request except for the model alias timed out at **180.022 seconds**, before generation. A second configuration moved vision to GPU, used 19 GPU layers, text batch 512/64 and `--fit off`, preserving the complete request byte-for-byte. It reached generation but timed out at **180.021 seconds** after 184 generated tokens; no complete provider body was returned. Initial whole-device use was 4,804/5,120 MiB. These cold runs establish neither a successful critique nor a usable 180-second latency result.
+
+A deliberate identical warm-cache diagnostic completed in **30.061 seconds**, with 9,572/9,573 prompt tokens cached and 207 completion tokens. It returned two distinct sections/70 provider words, correctly cited the opening and final samples, and proposed testing a comparison cut. Its bed setting remains an unsupported inference; broad quality is not established. The initial validator rejected its legitimate “Test if … improves viewer retention” wording. A regression reproduced that false positive, then the validator admitted a complete bounded conditional experiment while rejecting nearby promises, punctuation-separated assertions and modal clauses with guarantees. All numeric, audio and timestamp safeguards remain. Independent replay accepted the unmodified saved provider body without a new model request. That replay and the warm latency do not erase the failed cold deadline.
+
+One final cold configuration used the same complete request with **12,288 context and 22 GPU layers**, retaining 1,024 image tokens and text batch 512/64. Its 9,573-token prompt plus unchanged 2,200-token output allowance fits that context; no frame was dropped. The provider returned in **144.989 seconds**, with 217 completion tokens, zero cached tokens and no context truncation. This establishes a complete provider response inside the deadline for this input. The adapter initially rejected the equally conditional “Test if viewer retention improves”; a second narrow whole-clause regression covered that word order, and independent replay accepted the unmodified actual body. It still inferred a bed setting and does not establish broad visual accuracy. Longer transcripts/questions can exceed this diagnostic context.
+
+The last measured 4B command uses the pinned native CUDA runtime above:
+
+```powershell
+.\llama-server.exe `
+  --model 'C:\path\to\Qwen3VL-4B-Instruct-Q4_K_M.gguf' `
+  --mmproj 'C:\path\to\mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf' `
+  --host 127.0.0.1 --port 4321 --alias openreel-qwen3-vl-4b `
+  --threads 8 --threads-batch 8 --ctx-size 12288 --parallel 1 `
+  --n-gpu-layers 22 --cache-type-k q8_0 --cache-type-v f16 --flash-attn off `
+  --batch-size 512 --ubatch-size 64 --fit off `
+  --image-min-tokens 1024 --image-max-tokens 1024 --no-webui --offline
+```
+
+Use `OPENAI_BASE_URL=http://127.0.0.1:4321/v1`, the matching `OPENAI_VISION_MODEL=openreel-qwen3-vl-4b`, strict JSON Schema and `OPENREEL_VISION_TIMEOUT_MS=180000`. This is a measured diagnostic profile with recorded interpretation limits, not a general hardware or quality guarantee.
+
+Smaller decoder microbatches preserve all image embeddings; they do not reduce the vision encoder's full-image graph. Lowering `--mtmd-batch-max-tokens` does not split an individual Qwen3 image, whose first chunk is admitted intact. See the pinned [media batch admission](https://github.com/ggml-org/llama.cpp/blob/620d2225cc436ab0b001e3200e590e3b286ef9ab/tools/mtmd/mtmd.cpp#L2215) and [embedding ingestion](https://github.com/ggml-org/llama.cpp/blob/620d2225cc436ab0b001e3200e590e3b286ef9ab/tools/mtmd/mtmd-helper.cpp#L169). Static memory estimates are not whole-device peak or deadline guarantees. No image samples or output schema were reduced in these tests; the conditional-experiment contract correction is recorded separately above.
