@@ -81,3 +81,32 @@ test('corpus preview fans select the first record for three distinct creators',a
  const {patternPreviewRecords}=await module();const rows=[row('one'),row('two'),row('repeat',{creatorId:'102'}),row('three',{creatorId:'103'}),row('four',{creatorId:'104'})];
  assert.deepEqual(patternPreviewRecords(rows).map(r=>r.id),['one','two','three']);assert.deepEqual(patternPreviewRecords(rows.slice(0,3)).map(r=>r.id),['one','two']);
 });
+
+test('verified HTTPS covers later in a view-sorted sample reach the fan without changing record order or evidence',async()=>{
+ const {patternPreviewRecords}=await module();
+ const rows=[
+  row('most-viewed',{creatorId:'201',views:9000000,thumbnail:''}),
+  row('unknown-other',{creatorId:'202',views:8000000}),
+  row('covered-one',{creatorId:'201',views:7000,thumbnail:'https://p16.example.com/cover-a.jpeg',avatar:'https://p16.example.com/avatar-a.jpeg'}),
+  row('same-covered-creator',{creatorId:'201',views:6000,thumbnail:'https://p16.example.com/cover-a2.jpeg'}),
+  row('covered-two',{creatorId:'203',views:5000,thumbnail:'https://p16.example.com/cover-b.jpeg'}),
+  row('covered-three',{creatorId:'204',views:4000,thumbnail:'https://p16.example.com/cover-c.jpeg'}),
+  row('covered-four',{creatorId:'205',views:3000,thumbnail:'https://p16.example.com/cover-d.jpeg'})
+ ];
+ const before=JSON.stringify(rows),selected=patternPreviewRecords(rows);
+ assert.deepEqual(selected.map(r=>r.id),['covered-one','covered-two','covered-three']);assert.equal(selected[0],rows[2]);assert.equal(selected[0].avatar,'https://p16.example.com/avatar-a.jpeg');assert.equal(JSON.stringify(rows),before);
+});
+
+test('preview fan fills remaining distinct creators in order while unsafe or absent covers receive no image priority',async()=>{
+ const {patternPreviewRecords}=await module();
+ const rows=[
+  row('missing',{creatorId:'201',thumbnail:''}),
+  row('plain-http',{creatorId:'202',thumbnail:'http://images.example.com/b.jpg'}),
+  row('credentials',{creatorId:'203',thumbnail:'https://user:password@images.example.com/c.jpg'}),
+  row('data-url',{creatorId:'204',thumbnail:'data:image/png;base64,AAA'}),
+  row('broken-url',{creatorId:'205',thumbnail:'not a URL'}),
+  row('valid',{creatorId:'202',thumbnail:'https://images.example.com/real.jpg'})
+ ];
+ assert.deepEqual(patternPreviewRecords(rows).map(r=>r.id),['valid','missing','credentials']);
+ assert.deepEqual(patternPreviewRecords(rows.slice(0,5)).map(r=>r.id),['missing','plain-http','credentials']);
+});

@@ -1,9 +1,14 @@
 import {normalizeRecords,creatorKey} from './engine.js';
 
-/** Keep repeated uploads from one creator from occupying the whole preview fan. */
+/** Prefer supplied HTTPS covers, keeping one original record per preview creator. */
 export function patternPreviewRecords(records){
-  const seen=new Set();
-  return records.filter(record=>{const key=creatorKey(record)||record.id;if(seen.has(key))return false;seen.add(key);return true;}).slice(0,3);
+  const pictured=[],remaining=[],seen=new Set();
+  for(const record of records){
+    let hasCover=false;
+    try{const cover=new URL(record.thumbnail);hasCover=cover.protocol==='https:'&&!cover.username&&!cover.password;}catch{}
+    (hasCover?pictured:remaining).push(record);
+  }
+  return [...pictured,...remaining].filter(record=>{const key=creatorKey(record)||record.id;if(seen.has(key))return false;seen.add(key);return true;}).slice(0,3);
 }
 
 /** A retrieved sample is separate from the browser library and global corpus totals. */
