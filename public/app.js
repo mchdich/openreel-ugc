@@ -170,7 +170,10 @@ async function submit(question){question=question.trim()||(pendingVideo?'Review 
   const referenceInput=reference?{referenceId:reference.id,referenceRecord:reference}:{};
   const requestSource=sourceMode,requestMode=researchMode;if(requestSource!=='video'||conversationVideos.has(chat.id))rememberSource(chat,requestSource);const explicitAttachment=pendingVideo;const followupVideo=requestSource==='video'?conversationVideos.get(chat.id):null;const attached=explicitAttachment||followupVideo;let requestRecords=requestSource==='corpus'?[]:researchLibrary(),discoveryNotice='';draftText='';chat.messages.push({role:'user',content:question,...(attached?{attachment:{name:attached.attachment.name,duration:attached.attachment.duration}}:{})});busy=true;pendingChat=chat.id;view='chat';updateResearchProgress(chat.id,{source:requestSource,mode:requestMode,stage:attached?'Reviewing sampled video frames…':requestSource==='live'?'Finding TikTok videos…':requestSource==='corpus'?'Searching indexed videos…':'Researching your library…'});save();render();window.scrollTo(0,document.body.scrollHeight);
   try{
-    const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),(attached?185000:65000)+(attached?.audio?.chunks?.length||0)*45000);let res;
+    const chatBudget=aiStatus?.providerConfigured===true&&Number.isInteger(aiStatus.chatRequestTimeoutMs)&&aiStatus.chatRequestTimeoutMs>=10000&&aiStatus.chatRequestTimeoutMs<=180000?aiStatus.chatRequestTimeoutMs:25000;
+    // Retain Live discovery's existing 40s allowance beside the model deadline.
+    const requestBudget=attached?185000+(attached.audio?.chunks?.length||0)*45000:Math.max(65000,chatBudget+(requestSource==='live'?40000:5000));
+    const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),requestBudget);let res;
     try{
       if(attached?.audio?.status==='available'&&!attached.attachment.transcript){
         attached.transcriptions||=[];
