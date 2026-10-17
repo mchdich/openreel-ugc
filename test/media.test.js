@@ -246,6 +246,51 @@ test('conditional editing experiments do not assert a measured outcome or author
  ])await withProvider(respond(narrative({sections:[{heading:'Editing experiment',text,timestamps:[0,5.5]}]})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Suggest an editing test.',env),'provider-invalid-response',502));
 });
 
+test('editing proposals may state a bounded conditional test as their purpose',async()=>{
+ for(const text of [
+  'Try cutting to 5.5s immediately after 0s to test if the scene change enhances viewer retention. Compare with original sequence.',
+  'Consider a tighter crop to test whether the alternate crop changes engagement.',
+  'Experiment with a shorter opening to test if viewer retention improves.',
+  'Try removing the pause to test whether the transition affects watch time.'
+ ]){
+  await withProvider(respond(narrative({sections:[{heading:'Editing experiment',text,timestamps:[0,5.5]}]})),async env=>{
+   const result=await analyzeVideo(attachment(),'Suggest one visual editing experiment to test.',env);
+   assert.ok(result.sections[0].text.endsWith(text));
+   assert.deepEqual(result.videoAnalysis.timestamps,[0,5.5]);
+  });
+ }
+});
+
+test('an experiment purpose cannot authorize performance claims or another assertion',async()=>{
+ for(const text of [
+  'Try a crop that improves retention to test if the change enhances engagement.',
+  'Try a crop that may improve retention to test if the change enhances engagement.',
+  'Try a crop that will work to test if the scene change enhances retention.',
+  'Consider guaranteed results to test if the crop enhances retention.',
+  'Review this crop to test if the scene change enhances retention.',
+  'Try the crop to test if the scene change will enhance retention.',
+  'Try the crop to test if the scene change enhances retention and this increases engagement.',
+  'Try the crop to test if the scene change enhances retention: this improves engagement.',
+  'Try the crop to test if the scene change enhances retention – this improves engagement.',
+  'Try the crop to test if the scene change enhances retention--this improves engagement.',
+  'Try the crop to test if the scene change enhances retention (this improves engagement).',
+  'Try the crop to test if the scene change may enhance retention – this improves engagement.',
+  'Try the crop to test if the scene change could enhance retention (this increases engagement).',
+  'Try the crop to test if the scene change - this improves engagement enhances retention.',
+  'Try the crop to test whether the scene change enhances retention, this guarantees more views.',
+  'Try the crop to test if retention improves!This increases views.',
+  'Try the crop; to test if the scene change enhances retention.'
+ ])await withProvider(respond(narrative({sections:[{heading:'Editing experiment',text,timestamps:[0,5.5]}]})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Suggest an editing test.',env),'provider-invalid-response',502));
+});
+
+test('conditional experiment purposes retain numeric audio and timestamp safeguards',async()=>{
+ for(const text of [
+  'Try a tighter crop to test if the scene change enhances 90% retention.',
+  'Try using the upbeat music to test if the scene change enhances retention.',
+  'Try a tighter crop to test if the scene change enhances retention. At 2s the product appears.'
+ ])await withProvider(respond(narrative({sections:[{heading:'Editing experiment',text,timestamps:[0,5.5]}]})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Suggest an editing test.',env),'provider-invalid-response',502));
+});
+
 test('repeated citations to the same supplied frame are normalized without adding evidence',async()=>{
   await withProvider(respond(narrative({sections:[{heading:'Opening',text:'The sampled opening shows the product.',timestamps:[0,0]}]})),async env=>{
     const value=await analyzeVideo(attachment(),'Review this opening',env);
