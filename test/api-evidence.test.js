@@ -35,3 +35,8 @@ test('Live without provider or corpus gives a configuration error without outbou
   const response=await handleApi(req('/api/videos/discover',{query:'beauty'},'missing-index.example'));assert.equal(response.status,503);assert.match((await response.json()).error,/corpus|index|APIFY/i);
  });
 });
+
+test('research preserves per-source data attribution and labels upstream model evidence',async()=>{
+ const archived={...record,id:'tiktok-123456789',handle:'',creatorId:'123',url:'https://www.tiktok.com/player/v1/123456789',visualDescription:'A beauty product demonstration.',descriptionSource:'upstream-model',archiveProvenance:{dataset:'lingbow/tiktok-video-engagement-200k',license:'CC-BY-NC-4.0',sourceUrl:'https://huggingface.co/datasets/lingbow/tiktok-video-engagement-200k',engagementObservedOn:'2024-08-01'}};
+ const response=await handleApi(req('/api/chat',{question:'Analyze beauty hooks',records:[archived]},'attribution.example'));const value=await response.json();assert.equal(response.status,200);assert.match(value.notice,/CC-BY-NC-4.0/);assert.match(value.notice,/upstream AI|upstream model/i);assert.equal(value.sources[0].archiveProvenance.engagementObservedOn,'2024-08-01');assert.equal(value.sources[0].handle,'');
+});

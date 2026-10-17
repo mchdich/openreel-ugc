@@ -13,3 +13,6 @@ dist/
 
 __pycache__/
 *.py[cod]
+
+# Acquired datasets retain separate licenses and stay outside source releases.
+data/
