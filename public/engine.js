@@ -127,17 +127,18 @@ export function searchPlan(query='', options={}, records=[]) {
   for (const name of schools) {
     if (!filters.school && contains(rest, lower(name))) {
       filters.school = name;
-      rest = rest.replace(new RegExp(`\\b${escapeRegExp(lower(name))}(?:\\s+(?:university|college|school))?\\b`, 'gi'), ' ');
+      rest = rest.replace(new RegExp(`\\b(?:(?:for|at|from|attending|among|by)\\s+)?${escapeRegExp(lower(name))}(?:\\s+(?:university|college|school))?\\b`, 'gi'), ' ');
     }
   }
   if (!filters.school) {
     const named = rest.match(/(?:^|\b)([a-z][a-z .&'-]{0,70}\b(?:university|college|school)(?:\s+of\s+[a-z][a-z\s.'-]{1,40})?)\s+(?:creators?|influencers?)\b/i);
     const proper = String(query).match(/\b(?:find|show(?:\s+me)?|list|discover|get|give(?:\s+me)?)\s+(?:\d+\s+)?(.+?)\s+(?:creators?|influencers?)\b/i)?.[1]?.trim();
-    const candidate = named?.[1]?.replace(/^(?:find|show(?:\s+me)?|list|discover|get|give(?:\s+me)?)\s+(?:\d+\s+)?/i, '').trim()
+    // Strip request connectors before the institution word, preserving connectors within its name.
+    const candidate = named?.[1]?.replace(/^(?:(?!\b(?:university|college|school)\b).)*\b(?:for|at|from|attending|among|by)\s+/i, '').replace(/^(?:find|show(?:\s+me)?|list|discover|get|give(?:\s+me)?)\s+(?:\d+\s+)?/i, '').trim()
       || (proper && /^[A-Z]/.test(proper) && !records.some(record => record.niche && contains(lower(proper), lower(record.niche))) ? proper : '');
     if (candidate) {
       filters.school = candidate;
-      rest = rest.replace(new RegExp(`\\b${escapeRegExp(lower(candidate))}\\b`, 'gi'), ' ');
+      rest = rest.replace(new RegExp(`\\b(?:(?:for|at|from|attending|among|by)\\s+)?${escapeRegExp(lower(candidate))}\\b`, 'gi'), ' ');
     }
   }
   // Longer school phrases first: their location component must not create a second constraint.

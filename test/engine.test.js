@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeRecords, searchRecords, getTrends, research } from '../public/engine.js';
+import { normalizeRecords, searchRecords, searchPlan, getTrends, research } from '../public/engine.js';
 
 const fixture = [
   { id: 'a', handle: '@mina', caption: 'Campus beauty routine', transcript: 'Three things I wish I knew', hook: 'Three things', format: 'List', niche: 'beauty', school: 'New York University', location: 'New York City', followers: 28000, views: 10000, likes: 900, comments: 50, shares: 50, email: 'mina@example.com' },
@@ -136,6 +136,29 @@ test('school requests constrain the school field rather than caption mentions', 
   assert.deepEqual(searchRecords(records, 'Find University of Toronto creators').map(record => record.id), ['toronto']);
   assert.deepEqual(searchRecords(records.filter(record => record.id !== 'harvard'), 'Find Harvard creators'), []);
   assert.deepEqual(searchRecords(records, 'Find Princeton University creators'), []);
+});
+
+test('non-alias school plans preserve topic and profile filters without a loaded library',()=>{
+ const records=normalizeRecords([
+  {id:'match',handle:'one',school:'Stanford University',caption:'Skincare routine',followers:1500,email:'one@example.com',bio:'one@example.com'},
+  {id:'wrong-school',handle:'two',school:'Princeton University',caption:'Skincare at Stanford University',followers:1500,email:'two@example.com',bio:'two@example.com'},
+  {id:'wrong-topic',handle:'three',school:'Stanford University',caption:'Cooking routine',followers:1500,email:'three@example.com',bio:'three@example.com'},
+  {id:'wrong-followers',handle:'four',school:'Stanford University',caption:'Skincare routine',followers:999,email:'four@example.com',bio:'four@example.com'},
+  {id:'wrong-contact',handle:'five',school:'Stanford University',caption:'Skincare routine',followers:1500,email:'five@example.com'}
+ ]);
+ for(const connector of ['for','at','from','among','by']){
+  const query=`What skincare formats are ${connector} Stanford University creators with at least 1,000 followers and email in bio?`;
+  const plan=searchPlan(query,{},[]),libraryPlan=searchPlan(query,{},records);
+  assert.equal(plan.filters.school,'stanford university',connector);
+  assert.equal(plan.filters.school,libraryPlan.filters.school.toLowerCase(),connector);
+  assert.deepEqual(plan.terms,['skincare'],connector);
+  assert.equal(plan.filters.minFollowers,1000);assert.equal(plan.filters.emailInBio,true);
+  assert.deepEqual(searchRecords(records,plan.terms.join(' '),plan.filters).map(record=>record.id),['match'],connector);
+ }
+ for(const school of ['University of Toronto',"St. John's University",'Parsons School of Design','University of California at Los Angeles']){
+  const plan=searchPlan(`What skincare patterns are for ${school} creators?`,{},[]);
+  assert.equal(plan.filters.school,school.toLowerCase());assert.deepEqual(plan.terms,['skincare']);
+ }
 });
 
 test('dash follower ranges enforce both bounds and propagate a trailing unit', () => {
