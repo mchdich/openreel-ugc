@@ -1,1 +1,2 @@
-CREATE INDEX `corpus_statistics` ON `corpus_videos` (`kind`,`handle`,`views`,`verification`,`imported_at`);
+CREATE INDEX `corpus_statistics` ON `corpus_videos` (`kind`,`handle`,`views`,`verification`,`imported_at`);--> statement-breakpoint
+CREATE INDEX `corpus_school_followers` ON `corpus_videos` (`school_key`,`kind`,`followers`);

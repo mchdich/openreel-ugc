@@ -40,3 +40,7 @@ test('research preserves per-source data attribution and labels upstream model e
  const archived={...record,id:'tiktok-123456789',handle:'',creatorId:'123',url:'https://www.tiktok.com/player/v1/123456789',visualDescription:'A beauty product demonstration.',descriptionSource:'upstream-model',archiveProvenance:{dataset:'lingbow/tiktok-video-engagement-200k',license:'CC-BY-NC-4.0',sourceUrl:'https://huggingface.co/datasets/lingbow/tiktok-video-engagement-200k',engagementObservedOn:'2024-08-01'}};
  const response=await handleApi(req('/api/chat',{question:'Analyze beauty hooks',records:[archived]},'attribution.example'));const value=await response.json();assert.equal(response.status,200);assert.match(value.notice,/CC-BY-NC-4.0/);assert.match(value.notice,/upstream AI|upstream model/i);assert.equal(value.sources[0].archiveProvenance.engagementObservedOn,'2024-08-01');assert.equal(value.sources[0].handle,'');
 });
+
+test('mixed library research identifies fictional evidence rather than presenting it as actual source data',async()=>{
+ const rows=[{...record,id:'fictional',demo:true},{...record,id:'actual',demo:false}];const response=await handleApi(req('/api/chat',{question:'Analyze beauty hooks',records:rows},'mixed-evidence.example'));const result=await response.json();assert.match(result.notice,/1.*fictional|fictional.*1/i);assert.match(result.notice,/not.*real|example/i);
+});

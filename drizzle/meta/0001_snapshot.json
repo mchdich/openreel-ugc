@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "4e508e6a-b2cf-4b0e-9e4b-0f1bd3f90a0c",
+  "id": "de6375a8-e9a9-478e-a523-2e2f36aca22b",
   "prevId": "c6635dc5-88ef-4fa3-9e88-3e610e9b30a1",
   "tables": {
     "corpus_videos": {
@@ -221,6 +221,15 @@
             "views",
             "verification",
             "imported_at"
+          ],
+          "isUnique": false
+        },
+        "corpus_school_followers": {
+          "name": "corpus_school_followers",
+          "columns": [
+            "school_key",
+            "kind",
+            "followers"
           ],
           "isUnique": false
         }
