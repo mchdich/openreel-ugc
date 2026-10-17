@@ -1,0 +1,1 @@
+CREATE INDEX `corpus_statistics` ON `corpus_videos` (`kind`,`handle`,`views`,`verification`,`imported_at`);

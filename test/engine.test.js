@@ -213,3 +213,10 @@ test('numeric archival identities preserve unknown usernames and distinct creato
  assert.throws(()=>normalizeRecords([{handle:'',creatorId:'not-a-number'}]),/creator/i);
  assert.throws(()=>normalizeRecords([{handle:'',creatorId:'789',visualDescription:'Unattributed description'}]),/description/i);
 });
+
+test('ordinary comparison and recurrence wording does not become a literal topic filter',()=>{
+ const rows=normalizeRecords([{id:'one',handle:'@one',caption:'Skincare moisturizer routine',format:'Unboxing',views:100},{id:'two',handle:'@two',caption:'Skincare moisturizer reveal',format:'Unboxing',views:200}]);
+ assert.equal(research(rows,'What skincare trends repeat across creators?').trends.length,1);
+ assert.equal(research(rows,'Which skincare formats are trending?').trends.length,1);
+ assert.equal(research(rows,'Compare skincare hooks').sources.length,2);
+});
