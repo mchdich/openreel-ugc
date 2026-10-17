@@ -88,3 +88,7 @@
 .trend-evidence li small{display:block;font-size:9px;color:#aaa;margin:2px 0 5px}
 .trend-evidence q{display:block;font-size:11px;line-height:1.6;overflow-wrap:anywhere;white-space:pre-wrap}
 @supports(field-sizing:content){.composer textarea{field-sizing:content;height:auto}}
+
+.metric-row{flex-wrap:wrap}
+.pattern-group+.pattern-group{margin-top:28px}
+.pattern-group-heading{font-size:16px;font-weight:550;line-height:1.4;margin:0 0 16px;color:#777}
