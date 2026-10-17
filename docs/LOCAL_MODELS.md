@@ -83,6 +83,7 @@ OPENAI_BASE_URL=http://127.0.0.1:4319/v1
 OPENAI_MODEL=openreel-qwen2-vl
 OPENAI_VISION_MODEL=openreel-qwen2-vl
 OPENAI_VISION_RESPONSE_FORMAT=json_schema
+OPENREEL_VISION_TIMEOUT_MS=90000
 OPENAI_TRANSCRIPTION_MODEL=tiny.en
 OPENAI_TRANSCRIPTION_BASE_URL=http://127.0.0.1:4320/v1
 ```
@@ -109,3 +110,5 @@ On October 17, 2026, a real browser-generated speech-bearing MP4 went through th
 These are one clean synthesized-speech example and a simple generated illustration, not a broad natural-UGC accuracy test. Earlier real model outputs included schema failures, duplicate citations and a color-reading error. Strict output validation catches structural/evidence violations, not every mistaken visual interpretation.
 
 `audioAvailable:false` means raw acoustics were not given to the vision model. Separate speech recognition can have occurred; vision receives the resulting words as unverified text. Music, speaker identity, vocal delivery, precise word timing, continuous footage and causal performance claims remain unsupported. Local success also does not configure a hosted deployment or complete [full parity](PARITY.md). See [VERIFICATION.md](VERIFICATION.md) and [SECURITY.md](../SECURITY.md).
+
+An additional natural-video test with two actual official-player screenshots reached the default 45-second deadline before the CPU model completed its JSON response. A timeout returns an explicit error and does not retry. The optional bounded deadline above gives a local CPU model longer to finish; it does not establish natural-video accuracy. The hosted deployment has no vision or speech provider configured.

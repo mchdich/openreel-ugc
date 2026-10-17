@@ -8,6 +8,13 @@
       "when": 1792271288743,
       "tag": "0000_corpus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792273426232,
+      "tag": "0001_corpus_statistics",
+      "breakpoints": true
     }
   ]
 }

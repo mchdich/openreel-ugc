@@ -227,3 +227,9 @@ test('repeated citations to the same supplied frame are normalized without addin
     assert.match(value.sections[0].text,/^0s — /);assert.doesNotMatch(value.sections[0].text,/0s, 0s/);
   });
 });
+
+test('operator vision deadline is bounded and passed to the actual provider request',async()=>{
+ const original=AbortSignal.timeout;const seen=[];AbortSignal.timeout=milliseconds=>{seen.push(milliseconds);return original(milliseconds);};
+ try{await withProvider(respond(narrative()),async env=>{await analyzeVideo(attachment(),'Critique this',{...env,OPENREEL_VISION_TIMEOUT_MS:'90000'});});assert.ok(seen.includes(90000));}finally{AbortSignal.timeout=original;}
+ for(const value of ['0','9999','180001','NaN','45000.5'])await rejectsCode(()=>analyzeVideo(attachment(),'Critique this',{OPENAI_API_KEY:'provider-test-secret',OPENAI_MODEL:'vision',OPENREEL_VISION_TIMEOUT_MS:value}),'provider-configuration',503);
+});
