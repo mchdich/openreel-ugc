@@ -1,0 +1,21 @@
+# Source metadata and local inference continuation
+
+The full seven-point parity specification remains the target. The current public/deployed 1.3.1 source is 4091d4e; its UI audit fixed source placement and saved-source continuity. Actual gaps remain in source imagery, current evidence and dependable natural-video interpretation.
+
+## Evidence driving this increment
+
+The real 243-record cooking result exposed only one thumbnail. Five bounded ordinary public-player navigations returned four genuine canonical handles, covers and author-linked avatars; the fifth rendered unavailable. Direct HTTP supplied only a client-rendered shell, so browser collection is an explicit optional dependency. Raw observations and reviewed deltas are in work/post-metadata-collector, outside the source release. Exposed image src values are distinct from proof of a selected responsive-image resource.
+
+Eight full-detail frames exceeded the CPU deadline. Native CUDA completed the unchanged Qwen2 request in 102.630s but its interpretation remained repetitive and temporally ungrounded. A publisher-owned Qwen3-VL-2B pair completed in 68.347s and described the scene better, but invented package opening and made unsupported performance suggestions, so production rejected it. More successful transport is not semantic completion.
+
+## Design and implementation
+
+1. Add bounded field-specific player metadata evidence to normalized records. An explicit delta may change only handle, canonical video URL, author URL, cover URL and optional avatar. Verify the same post ID and matching author handle; never invent a handle or infer profile/bio attributes. Preserve creator IDs, captions, transcripts, upstream descriptions, posting dates, all metrics/missing flags, archive provenance, corpus kind, verification and original ingestion source/timestamp.
+2. Add a Node-only transactional metadata merge and an explicit CLI apply command. Validate the whole batch before mutation, reject missing/non-real records and conflicting IDs, and update searchable handle projections without promoting entire archival rows to provider-observed. No schema migration is needed for JSON evidence. Never mix Linux SQLite and native Windows SQLite writers on the actual NTFS product database.
+3. Promote the collector prototype to an optional portable CLI. Require supplied known numeric IDs, explicit output path and an available Playwright/browser runtime. Collect sequentially with bounded navigation count/time, no retries, no playback/media files or manual private APIs. Stop on an access barrier. Emit observations and deltas for review, then apply separately; source code does not bundle actual data or relicense creator media. Signed URLs expire and the DOM is not a documented metadata API.
+4. Add a bounded operator chat timeout while retaining the current default. Expose only the public request-budget number needed by the browser so slow local synthesis is not silently aborted by a shorter client timer. Invalid configuration fails before model invocation; provider errors remain sanitized. This changes neither auth nor source selection.
+5. Tighten general visual-grounding instructions around observable states versus inferred actions, clearly proposed new footage, exact sampled timestamps and testable suggestions without performance promises. Keep all eight samples, the production validators and the existing request schema. Verify any improvement with the actual clip, preserving prior failures and distinguishing a prompt change from a model/runtime change.
+
+## Gates
+
+Use meaningful unit regressions for delta identity/provenance/transaction rollback, collector parsing/barriers/optional runtime, and timeout/auth/fallback behavior. Run the actual reviewed four-source merge on the native Windows product store only after tests, retain before/after evidence, then inspect ordinary browser cards and source details. Re-test actual local inference separately from contract tests; no JSON-only accuracy claim. Finally publish matching source/build/deployment, run CI and actual hosted checks, and update the external exact release record. Current trend and full critique quality remain open until their evidence proves them.
