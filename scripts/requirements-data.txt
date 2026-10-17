@@ -1,0 +1,2 @@
+# Optional archive acquisition dependency; the app itself does not require Python.
+pyarrow==26.0.0
