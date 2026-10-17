@@ -113,3 +113,15 @@ test('D1 rejects invalid player identity and source metadata without writing a p
   assert.equal((await corpus.stats()).total,0);
  }finally{binding.close();}
 });
+
+// The hosted filter must use the genuine JSON username, not its nonempty identity-key column.
+test('D1 known-handle filtering agrees with SQLite before unique limits and rejects invalid options',async()=>{
+ const {binding,corpus}=open(),local=openCorpus(':memory:');try{
+  const rows=[row({id:'tiktok-1001',handle:'',creatorId:'901',url:'https://www.tiktok.com/player/v1/1001'}),row({id:'tiktok-1002',handle:'',creatorId:'902',url:'https://www.tiktok.com/player/v1/1002'}),row({id:'z-named-a',handle:'@named',creatorId:'903',url:'https://www.tiktok.com/@named/video/1003'}),row({id:'z-named-b',handle:'@named',creatorId:'903',url:'https://www.tiktok.com/@named/video/1004'}),row({id:'zz-second',handle:'@second',creatorId:'904',url:'https://www.tiktok.com/@second/video/1005'})];
+  await corpus.upsert(rows,{kind:'real'});local.upsert(rows,{kind:'real'});
+  assert.equal((await corpus.search('',{uniqueCreators:true,limit:1}))[0].handle,'');
+  for(const options of [{knownHandlesOnly:true,uniqueCreators:true,limit:2},{knownHandlesOnly:true,uniqueCreators:true,limit:1,offset:1},{knownHandlesOnly:false,limit:1}])assert.deepEqual((await corpus.search('',options)).map(r=>r.id),local.search('',options).map(r=>r.id));
+  assert.deepEqual((await corpus.search('',{knownHandlesOnly:true,uniqueCreators:true,limit:2})).map(r=>r.handle),['@named','@second']);
+  for(const value of ['true',1,null,[]])await assert.rejects(corpus.search('',{knownHandlesOnly:value}),/knownHandlesOnly.*boolean/i);
+ }finally{binding.close();local.close();}
+});

@@ -186,3 +186,21 @@ test('visual descriptions enter only the search projection and update stale inde
   db.upsert([{...record,visualDescription:'A saffron product reveal'}],{kind:'real'});assert.deepEqual(db.search('lavender'),[]);assert.equal(db.search('saffron').length,1);assert.equal(db.search('spoken').length,1);
  }finally{db.close();}
 });
+
+// Numeric-only identities must not consume a profile refresh's bounded username slots.
+test('known-handle filtering precedes creator deduplication, limits and offsets',()=>{
+ const db=open();try{
+  db.upsert([
+   real({id:'tiktok-1001',handle:'',creatorId:'901',url:'https://www.tiktok.com/player/v1/1001'}),
+   real({id:'tiktok-1002',handle:'',creatorId:'902',url:'https://www.tiktok.com/player/v1/1002'}),
+   real({id:'z-named-a',handle:'@named',creatorId:'903',url:'https://www.tiktok.com/@named/video/1003'}),
+   real({id:'z-named-b',handle:'@named',creatorId:'903',url:'https://www.tiktok.com/@named/video/1004'}),
+   real({id:'zz-second',handle:'@second',creatorId:'904',url:'https://www.tiktok.com/@second/video/1005'})
+  ],{kind:'real'});
+  assert.equal(db.search('',{uniqueCreators:true,limit:1})[0].handle,'');
+  assert.deepEqual(db.search('',{knownHandlesOnly:true,uniqueCreators:true,limit:2}).map(r=>r.handle),['@named','@second']);
+  assert.deepEqual(db.search('',{knownHandlesOnly:true,uniqueCreators:true,limit:1,offset:1}).map(r=>r.handle),['@second']);
+  assert.equal(db.search('',{knownHandlesOnly:false,limit:1})[0].handle,'');
+  for(const value of ['true',1,null,[]])assert.throws(()=>db.search('',{knownHandlesOnly:value}),/knownHandlesOnly.*boolean/i);
+ }finally{db.close();}
+});

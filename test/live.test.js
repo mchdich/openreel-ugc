@@ -16,7 +16,7 @@ async function withFetch(fn,run){const original=globalThis.fetch;globalThis.fetc
 
 test('live query refreshes indexed handles through official GET and returns only current compound matches',async()=>{
  const old=seed('campuscreator');
- const index={...corpus([old]),search:async(text,options)=>{assert.equal(text,'');assert.deepEqual(options,{kind:'real',uniqueCreators:true,limit:3,school:'NYU'});return [old];}};
+ const index={...corpus([old]),search:async(text,options)=>{assert.equal(text,'');assert.deepEqual(options,{kind:'real',uniqueCreators:true,knownHandlesOnly:true,limit:3,school:'NYU'});return [old];}};
  await withFetch(async(url,options)=>{
   assert.equal(url,'https://www.tiktok.com/embed/@campuscreator');
   assert.equal(options.method,'GET');assert.equal(options.redirect,'error');assert.equal(options.headers.authorization,undefined);
@@ -107,6 +107,21 @@ test('volatile cached follower and contact values never prevent a bounded curren
   db.upsert([{...seed('campuscreator'),id:'tiktok-1000',url:'https://www.tiktok.com/@campuscreator/video/1000',followers:999,email:'',bio:'NYU',sourceType:'tiktok-creator-embed',fetchedAt:'2026-10-01T00:00:00Z'}],{kind:'real',source:'earlier-public-snapshot'});
   await withFetch(async()=>{calls++;return profile('campuscreator',{followers:1200});},async()=>{
    const result=await discover(query,{},db);assert.equal(calls,1);assert.equal(result.records.length,1);assert.equal(result.records[0].followers,1200);
+  });
+ }finally{db.close();}
+});
+
+test('numeric-only seed matches cannot hide a later known username from bounded live refresh',async()=>{
+ const {openCorpus}=await import('../lib/corpus.js');const db=openCorpus(':memory:');const calls=[];
+ try{
+  db.upsert([
+   ...[1001,1002,1003].map((id,i)=>({id:`tiktok-${id}`,handle:'',creatorId:String(900+i),url:`https://www.tiktok.com/player/v1/${id}`,caption:'skincare',sourceType:'public-archive',fetchedAt:'2026-10-01T00:00:00Z'})),
+   {...seed('campuscreator'),id:'z-named',creatorId:'999',url:'https://www.tiktok.com/@campuscreator/video/1004',caption:'skincare',sourceType:'tiktok-creator-embed',fetchedAt:'2026-10-01T00:00:00Z'}
+  ],{kind:'real'});
+  assert.equal(db.search('skincare',{uniqueCreators:true,limit:1})[0].handle,'');
+  await withFetch(async url=>{calls.push(url);return profile('campuscreator');},async()=>{
+   const found=await discover('skincare',{maxCreators:1},db);
+   assert.deepEqual(calls,['https://www.tiktok.com/embed/@campuscreator']);assert.equal(found.creatorsRefreshed,1);assert.equal(found.records.length,2);assert.ok(found.records.every(r=>r.handle==='@campuscreator'));
   });
  }finally{db.close();}
 });
