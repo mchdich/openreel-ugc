@@ -1,0 +1,155 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,readFileSync,writeFileSync,existsSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import {spawnSync} from 'node:child_process';
+let module;
+try { module=await import('../lib/corpus.js'); } catch(error) { if(error.code!=='ERR_MODULE_NOT_FOUND')throw error; }
+const root=resolve(import.meta.dirname,'..');
+const source={url:'https://www.tiktok.com/@scout2015/video/6718335390845095173',sourceType:'user-import',fetchedAt:'2026-10-17T20:39:05.973Z'};
+const real=(overrides={})=>({id:'known-source',handle:'@scout2015',caption:'Campus cooking with a beauty routine',followers:1200,views:900,likes:90,comments:5,shares:5,...source,...overrides});
+function open(path=':memory:'){assert.equal(typeof module?.openCorpus,'function','openCorpus must be implemented');return module.openCorpus(path);}
+function temporary(t){const dir=mkdtempSync(join(tmpdir(),'openreel-corpus-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));return dir;}
+function run(...args){return spawnSync(process.execPath,['scripts/corpus.js',...args],{cwd:root,encoding:'utf8'});}
+
+// Missing persistence or category filtering loses a user's real research library on reopen.
+test('file corpus persists records and keeps example and unverified counts distinct',t=>{
+ const path=join(temporary(t),'nested','corpus.sqlite');let db=open(path);
+ db.upsert([{handle:'fictional',caption:'Fictional campus beauty',demo:true}]);
+ db.upsert([{handle:'unsourced',caption:'Unverified record'}]);
+ assert.equal(db.stats().total,2);assert.equal(db.stats().byKind.example,1);assert.equal(db.stats().byKind.unverified,1);assert.equal(db.stats().byKind.real,0);
+ assert.deepEqual(db.search('campus'),[]);db.close();
+ db=open(path);try{assert.equal(db.search('campus',{kind:'example'})[0].demo,true);assert.equal(db.stats().total,2);}finally{db.close();}
+});
+
+// A broken conflict clause duplicates records or leaves stale FTS terms after updates.
+test('idempotent upserts update FTS terms and preserve stable IDs for source URLs',()=>{
+ const db=open();try{
+  const record=real({id:undefined,caption:'Rare chrysanthemum opening'});
+  assert.equal(db.upsert([record],{kind:'real',source:'permitted-json'}).changed,1);
+  const first=db.search('chrysanthemum')[0];assert.ok(first.id);assert.equal(first.corpusVerification,'user-supplied');
+  assert.equal(db.upsert([record],{kind:'real',source:'permitted-json'}).changed,0);
+  db.upsert([{...record,caption:'Remarkable saffron opening'}],{kind:'real',source:'permitted-json'});
+  assert.deepEqual(db.search('chrysanthemum'),[]);assert.equal(db.search('saffron')[0].id,first.id);assert.equal(db.stats().total,1);
+ }finally{db.close();}
+});
+
+// Validation must roll back earlier changes and their FTS triggers, not just the bad row.
+test('invalid streamed import rolls back inserted records and updates atomically',()=>{
+ const db=open();try{
+  db.upsert([real({caption:'Original marigold'})],{kind:'real'});
+  function* bad(){yield real({caption:'Changed lavender'});yield real({id:'new',handle:'@another',url:'https://www.tiktok.com/@another/video/123'});yield {caption:'missing handle'};}
+  assert.throws(()=>db.upsert(bad(),{kind:'real'}),/handle/i);
+  assert.equal(db.stats().total,1);assert.equal(db.get('known-source').caption,'Original marigold');assert.deepEqual(db.search('lavender'),[]);assert.equal(db.search('marigold').length,1);
+ }finally{db.close();}
+});
+
+// A benchmark/example must never silently become a real source count.
+test('real classification requires provenance and rejects fictional or synthetic promotion',()=>{
+ const db=open();try{
+  assert.throws(()=>db.upsert([{handle:'fake',caption:'x'}],{kind:'real'}),/source|provenance|real/i);
+  assert.throws(()=>db.upsert([real({demo:true})],{kind:'real'}),/example|fictional|demo/i);
+  db.upsert([real()],{kind:'real'});
+  db.upsert([{id:'example',handle:'example',caption:'Beauty',demo:true}],{kind:'example'});
+  db.upsert([{id:'synthetic',handle:'synthetic',caption:'Beauty synthetic'}],{kind:'synthetic'});
+  db.upsert([{id:'unverified',handle:'unverified',caption:'Beauty'}]);
+  assert.deepEqual(db.stats().byKind,{real:1,example:1,synthetic:1,unverified:1});
+  assert.equal(db.search('beauty').length,1);assert.equal(db.search('beauty',{kind:'all'}).length,4);
+  assert.throws(()=>db.upsert([real({id:'synthetic',demo:false})],{kind:'real'}),/synthetic|promot/i);
+  assert.equal(db.stats().byKind.real,1);
+ }finally{db.close();}
+});
+
+// Treating unknown followers/views as measured zero makes strict creator searches false.
+test('unknown metrics survive persistence and cannot satisfy follower filters',()=>{
+ const db=open();try{
+  db.upsert([real({id:'unknown',followers:undefined,views:undefined}),real({id:'zero',handle:'zero',url:'https://www.tiktok.com/@zero/video/2',followers:0,views:0}),real({id:'flagged',handle:'flagged',url:'https://www.tiktok.com/@flagged/video/3',followers:0,unavailableMetrics:['followers']})],{kind:'real'});
+  const unknown=db.get('unknown');assert.ok(unknown.unavailableMetrics.includes('followers'));assert.ok(unknown.unavailableMetrics.includes('views'));
+  assert.deepEqual(db.search('',{maxFollowers:0}).map(r=>r.id),['zero']);assert.equal(db.stats().knownViewRecords,2);
+ }finally{db.close();}
+});
+
+// Interpreting user text as SQL or raw FTS syntax can broaden queries or crash them.
+test('FTS search applies profile bounds and treats query syntax as literal text',()=>{
+ const db=open();try{
+  db.upsert([real({id:'nyu',school:'NYU',location:'NYC',bio:'Public skincare partner',email:'public@example.com'}),real({id:'other',handle:'other',url:'https://www.tiktok.com/@other/video/2',school:'UCLA',location:'LA',followers:5000})],{kind:'real'});
+  assert.deepEqual(db.search('skincare',{school:'NYU',location:'NYC',minFollowers:1000,maxFollowers:2000,emailOnly:true}).map(r=>r.id),['nyu']);
+  assert.deepEqual(db.search('beauty',{school:'Harvard'}),[]);
+  assert.doesNotThrow(()=>db.search('"beauty" OR 1=1 --'));assert.equal(db.stats().total,2);
+  assert.throws(()=>db.search('beauty',{limit:0}),/limit/i);assert.throws(()=>db.search('beauty',{kind:'fake'}),/kind/i);
+ }finally{db.close();}
+});
+
+// Reusing browser batch normalization would reject a legitimate corpus past 2,000 rows.
+test('iterable imports exceed the browser limit and support bounded result pages',()=>{
+ const db=open();try{
+  function* records(){for(let i=0;i<2501;i++)yield {id:`s-${String(i).padStart(4,'0')}`,handle:`synthetic_${i}`,caption:'Synthetic pagination sentinel',demo:true};}
+  db.upsert(records(),{kind:'synthetic',source:'unit-test-generated'});
+  assert.equal(db.stats().total,2501);assert.equal(db.stats().byKind.real,0);
+  const page=db.search('sentinel',{kind:'synthetic',limit:2,offset:2});assert.deepEqual(page.map(r=>r.id),['s-0002','s-0003']);
+ }finally{db.close();}
+});
+
+// The actual CLI must preserve classifications and leave existing data after bad imports.
+test('CLI initializes, imports JSON, searches and reports persisted counts',t=>{
+ const dir=temporary(t),path=join(dir,'cli.sqlite'),file=join(dir,'records.json');
+ writeFileSync(file,JSON.stringify([{id:'fixture',handle:'fictional',caption:'Orchid sample',demo:true}]));
+ let result=run('init','--db',path);assert.equal(result.status,0,result.stderr);
+ result=run('import',file,'--db',path,'--kind','example','--source','unit-test');assert.equal(result.status,0,result.stderr);assert.equal(JSON.parse(result.stdout).changed,1);
+ result=run('search','orchid','--db',path,'--kind','example');assert.equal(result.status,0,result.stderr);assert.equal(JSON.parse(result.stdout).records[0].id,'fixture');
+ result=run('stats','--db',path);assert.equal(result.status,0,result.stderr);assert.equal(JSON.parse(result.stdout).byKind.example,1);
+ writeFileSync(file,JSON.stringify([{handle:'ok'},{caption:'invalid'}]));result=run('import',file,'--db',path);assert.equal(result.status,1);assert.match(result.stderr,/handle/i);
+ result=run('stats','--db',path);assert.equal(JSON.parse(result.stdout).total,1);
+ const untouched=join(dir,'not-created.sqlite');result=run('unknown','--db',untouched);assert.equal(result.status,1);assert.equal(existsSync(untouched),false);
+});
+
+// Profile acquisition must issue one request per normalized unique handle and never retry errors.
+test('creator collection is sequential, deduplicated and preserves provider-observed provenance',async()=>{
+ assert.equal(typeof module?.collectCreatorHandles,'function','collectCreatorHandles must be implemented');
+ const db=open();const calls=[];
+ try{
+  const summary=await module.collectCreatorHandles(db,[' @Scout2015 ','scout2015','@missing'],{discoverCreator:async handle=>{
+   calls.push(handle);if(handle==='@missing')throw new Error('private provider secret');
+   return {records:[real({sourceType:'tiktok-creator-embed'})],creator:{handle:'@scout2015'},provider:'tiktok-creator-embed',fetchedAt:source.fetchedAt};
+  }});
+  assert.deepEqual(calls,['@scout2015','@missing']);assert.equal(summary.profilesRequested,2);assert.equal(summary.recordsChanged,1);assert.equal(summary.failures.length,1);
+  assert.doesNotMatch(JSON.stringify(summary),/private provider secret/);assert.equal(db.stats().providerObservedReal,1);assert.equal(db.get('known-source').corpusVerification,'provider-observed');
+ }finally{db.close();}
+});
+
+// Capacity demonstrations must be isolated, explicitly synthetic and never inflate real counts.
+test('benchmark CLI requires an explicit database and reports only synthetic rows',t=>{
+ const path=join(temporary(t),'benchmark.sqlite');
+ let result=run('benchmark','--count','31');assert.equal(result.status,1);assert.match(result.stderr,/explicit.*db|--db/i);
+ result=run('benchmark','--db',path,'--count','31');assert.equal(result.status,0,result.stderr);
+ const report=JSON.parse(result.stdout);assert.equal(report.synthetic,true);assert.equal(report.stats.total,31);assert.equal(report.stats.byKind.synthetic,31);assert.equal(report.stats.byKind.real,0);assert.ok(report.importMilliseconds>=0);
+});
+
+// Validate a whole handle list before contacting any profile, avoiding accidental partial collection.
+test('invalid handle collection performs no provider requests',async()=>{
+ assert.equal(typeof module?.collectCreatorHandles,'function','collectCreatorHandles must be implemented');const db=open();let calls=0;
+ try{await assert.rejects(module.collectCreatorHandles(db,['@valid','https://example.com'],{discoverCreator:async()=>{calls++;return {records:[]};}}),/handle/i);assert.equal(calls,0);assert.equal(db.stats().total,0);}finally{db.close();}
+});
+
+// Approximate follower bounds are fractional; rejecting them breaks valid natural queries.
+test('approximate follower plans accept fractional boundaries',()=>{
+ const db=open();try{db.upsert([real()],{kind:'real'});assert.equal(db.search('Find creators around 1201 followers').length,1);}finally{db.close();}
+});
+
+// Source-only imports and adapter IDs must address the same video on subsequent acquisition.
+test('canonical video IDs remain idempotent across source import and adapter acquisition',()=>{
+ const db=open();try{
+  db.upsert([real({id:undefined})],{kind:'real'});
+  db.upsert([real({id:'tiktok-6718335390845095173'})],{kind:'real'});
+  assert.equal(db.stats().total,1);
+ }finally{db.close();}
+});
+
+// Limiting clips before deduplication must not hide other matching creators.
+test('creator result count is applied after matching handles are deduplicated',()=>{
+ const db=open();try{
+  db.upsert([real({id:'a1'}),real({id:'a2',url:'https://www.tiktok.com/@scout2015/video/2'}),real({id:'a3',url:'https://www.tiktok.com/@scout2015/video/3'}),real({id:'b',handle:'@other',url:'https://www.tiktok.com/@other/video/4'})],{kind:'real'});
+  assert.deepEqual(db.search('Find 2 beauty creators').map(record=>record.handle),['@scout2015','@other']);
+ }finally{db.close();}
+});
