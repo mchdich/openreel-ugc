@@ -105,6 +105,38 @@ The adapter returns a bounded public profile snapshot and currently exposed vide
 
 An earlier implementation check used one actual request for `@scout2015` to populate a local database with **10 real records from one creator** and `providerObservedReal: 10`. That historical local check is separate from the hosted 4,424-record seed above. Databases are ignored by Git; a source checkout does not itself contain the hosted corpus or optional research archive.
 
+## Optional public-player metadata collection
+
+The local collector can resolve imagery and a current handle for explicitly supplied known post IDs when TikTok exposes them in its ordinary public player. It does not search for posts. Put **1–5 unique numeric post ID strings** in a JSON array; use strings to preserve large IDs exactly. An explicit `--limit` permits up to 40 IDs in one sequential batch. Missing or unavailable sources remain unresolved.
+
+Playwright and a browser are optional **local operator tools**, separate from the application and its dependency-free runtime. Install Playwright manually into a separate tools directory if needed, for example `npm install --prefix /absolute/path/browser-tools playwright`, and supply its absolute module path plus an already installed browser executable. The collector never installs packages or downloads a browser automatically.
+
+```sh
+node scripts/collect-player-metadata.js \
+  --ids /absolute/path/post-ids.json \
+  --out /absolute/path/player-observations \
+  --playwright-module /absolute/path/browser-tools/node_modules/playwright \
+  --browser-path /absolute/path/browser-executable
+```
+
+Use a new output directory for each run, outside the source release. The command requires both paths explicitly and makes one ordinary [official public-player navigation](https://developers.tiktok.com/docs/en/embed-player) per selected ID, with `autoplay=0`. It does not request playback, save media files, call private APIs manually, or retry. It blocks Service Workers, cancels downloads and aborts recognized media requests; normal player networking still occurs, so these checks do not establish zero media network bytes. A detected HTTP 401/403/429, login/CAPTCHA, navigation failure or total batch deadline stops collection and retains the partial report. A player that renders unavailable produces an observation without an invented handle or cover.
+
+Defaults are a 15-second navigation timeout, up to 10 seconds waiting for metadata and a 120-second batch budget. `--navigation-timeout-ms` permits 1,000–30,000, `--settle-timeout-ms` permits 0–20,000, and `--batch-timeout-ms` permits 1,000–600,000. A separate watchdog covers stalled browser calls, saves the active attempt and allows at most 500 ms for browser cleanup before exiting the collector. `--limit` defaults to 5 and has a hard maximum of 40; an oversized input is rejected before any navigation. A stopped run exits nonzero. `navigationCount` counts explicit player navigations, rather than all underlying HTTP requests.
+
+The output directory contains `observations.json`, `deltas.json` and `summary.json`. Deltas contain only `handle`, canonical `url`, `authorUrl`, optional `thumbnail`, and optional `avatar`, each with its own raw `metadataEvidence`. Identity requires a video link with the exact requested post ID and a matching author link. Avatar evidence requires an image nested in that author's link. Images retain the observed `src`, selected `currentSrc`, `srcset`, dimensions and selector; `loadedSourceVerified` distinguishes a selected loaded URL from a legacy `src` observation. This evidence supplies no bio, school, location, metrics, transcript or posting-date claim. The DOM is an observed implementation detail, not a documented metadata API; signed image URLs can expire and are not permanent stored assets.
+
+Review the deltas, then apply them separately to an **explicit existing local database**:
+
+```sh
+node scripts/corpus.js apply-player-metadata \
+  /absolute/path/player-observations/deltas.json \
+  --db /absolute/path/existing-corpus.sqlite
+```
+
+The apply command performs no fetching. It accepts a raw delta array or `{ "deltas": [...] }`, requires 1–40 deltas and `--db`, and validates the complete input before opening the database. It calls the transactional `Corpus.applyPlayerMetadata` merge; do not use ordinary `import` for a delta, because import replaces full records. Missing, conflicting or non-real record IDs reject the whole batch.
+
+The merge preserves numeric creator IDs, captions, transcripts, separately labeled descriptions, posting dates, metrics and missing flags, archive/profile provenance, original ingestion source/time, corpus classification and verification. Only the observed fields and compact `metadataEvidence` change. Its field list identifies the covered metadata; it does not promote the whole archival record to `provider-observed`. Original dataset and underlying-content rights remain attached, including CC-BY-NC restrictions where applicable. A recent handle/cover observation does not establish current trend activity or newly analyzed archival text. Keep acquired reports and creator content outside source control; none are bundled with this collector.
+
 ## Synthetic capacity benchmark
 
 Use an explicitly separate, empty database:
@@ -144,7 +176,7 @@ try {
 }
 ```
 
-Exports are `Corpus`, `openCorpus(path = DEFAULT_CORPUS_PATH, {readOnly = false})`, `DEFAULT_CORPUS_PATH`, and `collectCreatorHandles(corpus, handles, {env, discoverCreator})`. Handle methods are `upsert(iterable, {kind, source, verification})`, `search(query, options)`, `get(id)`, `stats()`, and `close()`.
+Exports are `Corpus`, `openCorpus(path = DEFAULT_CORPUS_PATH, {readOnly = false})`, `DEFAULT_CORPUS_PATH`, and `collectCreatorHandles(corpus, handles, {env, discoverCreator})`. Handle methods are `upsert(iterable, {kind, source, verification})`, local-only `applyPlayerMetadata(deltas)`, `search(query, options)`, `get(id)`, `stats()`, and `close()`.
 
 Search/get return normalized records with `corpusKind`, `corpusVerification`, `corpusSource`, and `corpusImportedAt`. `upsert` returns `{processed, changed, total}`. Search supports the CLI filters plus `niche`, `format`, `handle`, `emailInBio`, `uniqueCreators` and boolean `knownHandlesOnly`. The acquisition helper returns request/import/change counts and safe per-handle failures.
 
