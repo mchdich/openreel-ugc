@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
-import {readFileSync} from 'node:fs';
+import {readFileSync,readdirSync} from 'node:fs';
 import {openCorpus} from '../lib/corpus.js';
 let workerModule;
 try{workerModule=await import('../lib/corpus-worker.js');}catch(error){if(error.code!=='ERR_MODULE_NOT_FOUND')throw error;}
 
 /** Real SQLite behind only the asynchronous D1 transport contract. */
 class SQLiteD1{
- constructor(){this.db=new DatabaseSync(':memory:');this.db.exec(readFileSync(new URL('../drizzle/0000_corpus.sql',import.meta.url),'utf8'));this.calls=[];this.batches=0;}
+ constructor(){this.db=new DatabaseSync(':memory:');for(const file of readdirSync(new URL('../drizzle/',import.meta.url)).filter(name=>/^\d{4}_.+\.sql$/.test(name)).sort())this.db.exec(readFileSync(new URL('../drizzle/'+file,import.meta.url),'utf8'));this.calls=[];this.batches=0;}
  prepare(sql){
   this.calls.push(sql);const db=this.db;
   return {sql,parameters:[],bind(...parameters){return {sql,parameters,async all(){return {success:true,results:db.prepare(sql).all(...parameters)};},async first(){return db.prepare(sql).get(...parameters)??null;}};},async all(){return {success:true,results:db.prepare(sql).all()};},async first(){return db.prepare(sql).get()??null;}};
@@ -123,5 +123,14 @@ test('D1 known-handle filtering agrees with SQLite before unique limits and reje
   for(const options of [{knownHandlesOnly:true,uniqueCreators:true,limit:2},{knownHandlesOnly:true,uniqueCreators:true,limit:1,offset:1},{knownHandlesOnly:false,limit:1}])assert.deepEqual((await corpus.search('',options)).map(r=>r.id),local.search('',options).map(r=>r.id));
   assert.deepEqual((await corpus.search('',{knownHandlesOnly:true,uniqueCreators:true,limit:2})).map(r=>r.handle),['@named','@second']);
   for(const value of ['true',1,null,[]])await assert.rejects(corpus.search('',{knownHandlesOnly:value}),/knownHandlesOnly.*boolean/i);
+ }finally{binding.close();local.close();}
+});
+
+test('D1 posting calendar filters preserve the same bounded subset before pagination',async()=>{
+ const {binding,corpus}=open(),local=openCorpus(':memory:');try{
+  const rows=[row({id:'a-old',postedAt:'2024-01-01'}),row({id:'b-unknown'}),row({id:'z-current',postedAt:'2024-07-21T23:00:00'})];
+  await corpus.upsert(rows,{kind:'real'});local.upsert(rows,{kind:'real'});
+  const options={postedFrom:'2024-07-08',postedThrough:'2024-07-21',limit:1};assert.deepEqual((await corpus.search('beauty',options)).map(r=>r.id),['z-current']);assert.deepEqual((await corpus.search('beauty',options)).map(r=>r.id),local.search('beauty',options).map(r=>r.id));
+  for(const options of [{postedFrom:'2024-02-30'},{postedThrough:'2024-7-21'},{postedFrom:'2024-07-22',postedThrough:'2024-07-21'}])await assert.rejects(()=>corpus.search('',options),/posting|calendar|date/i);
  }finally{binding.close();local.close();}
 });

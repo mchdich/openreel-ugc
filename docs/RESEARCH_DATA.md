@@ -76,7 +76,7 @@ The verified portable export is 364,933,545 bytes (SHA-256 `366852df00dbce523069
 
 ## Historical format share comparison
 
-The pending 1.3.0 checkout adds explicit dated Library and Corpus requests such as:
+The 1.3.0 implementation adds explicit dated Library and Corpus requests such as:
 
 > What skincare formats are gaining share as of 2024-07-21 over 7 days?
 

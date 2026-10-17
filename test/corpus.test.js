@@ -204,3 +204,12 @@ test('known-handle filtering precedes creator deduplication, limits and offsets'
   for(const value of ['true',1,null,[]])assert.throws(()=>db.search('',{knownHandlesOnly:value}),/knownHandlesOnly.*boolean/i);
  }finally{db.close();}
 });
+
+test('posting calendar bounds apply before ranked limits and exclude missing dates',()=>{
+ const db=open();try{
+  db.upsert([real({id:'a-old',postedAt:'2024-01-01'}),real({id:'b-unknown'}),real({id:'z-current',postedAt:'2024-07-21T23:00:00',caption:'Beauty routine'})],{kind:'real'});
+  assert.deepEqual(db.search('beauty',{postedFrom:'2024-07-08',postedThrough:'2024-07-21',limit:1}).map(r=>r.id),['z-current']);
+  assert.deepEqual(db.search('beauty',{postedFrom:'2024-07-22',limit:1}),[]);
+  for(const options of [{postedFrom:'2024-02-30'},{postedThrough:'2024-7-21'},{postedFrom:'2024-07-22',postedThrough:'2024-07-21'},{postedFrom:42}])assert.throws(()=>db.search('',options),/posting|calendar|date/i);
+ }finally{db.close();}
+});

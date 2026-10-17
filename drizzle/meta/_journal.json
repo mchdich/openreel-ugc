@@ -15,6 +15,13 @@
       "when": 1792273991846,
       "tag": "0001_corpus_statistics",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792274906949,
+      "tag": "0002_temporal_posting",
+      "breakpoints": true
     }
   ]
 }

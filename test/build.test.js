@@ -17,6 +17,8 @@ test('portable Worker serves the exact client and handles research without Node 
   const answer=await worker.fetch(new Request('https://example.test/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:'Find NYU creators',records:[]})}));
   assert.equal(answer.status,200);
   const result=await answer.json();assert.deepEqual(result.creators,[]);assert.match(result.summary,/no creators/i);
+  const dated=await worker.fetch(new Request('https://example.test/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:'What skincare formats are rising as of 2024-07-21 over 7 days?',records:[]})}));
+  assert.equal(dated.status,200);assert.equal((await dated.json()).temporal.windows.prior.start,'2024-07-08');
   assert.equal((await worker.fetch(new Request('https://example.test/missing'))).status,404);
   assert.equal((await worker.fetch(new Request('https://example.test/',{method:'POST'}))).status,405);
 });
