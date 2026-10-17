@@ -95,3 +95,8 @@
 .additional-sources{margin:20px 0;border-top:1px solid #eee;padding-top:14px}
 .additional-sources>summary{cursor:pointer;font-size:12px;font-weight:500;color:#888}
 .additional-sources[open]>summary{margin-bottom:12px}
+
+/* Missing source images keep their supplied text and creator identity readable. */
+.video-cover:not(:has(.video-thumbnail)) .cover-top,.video-cover:not(:has(.video-thumbnail)) .cover-bottom{color:#555}
+.video-cover:not(:has(.video-thumbnail)) .cover-bottom>span{color:#777}
+.video-cover:not(:has(.video-thumbnail)) .cover-quote{color:#444;overflow-wrap:anywhere}
