@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeWorkspace} from '../public/workspace.js';
+import {normalizeWorkspace,mergeLibrary} from '../public/workspace.js';
 
 const record={id:'one',handle:'safe.creator',hook:'A hook',followers:1500};
 const result={title:'Result',summary:'Summary',sections:[],sources:[record],creators:[]};
@@ -29,4 +29,16 @@ test('attachment evidence survives reload without retaining frame or video paylo
   assert.deepEqual(messages[0].attachment,{name:'clip.webm',duration:3});
   assert.equal(messages[1].result.videoAnalysis.frameCount,2);
   assert.ok(!JSON.stringify(workspace).includes('secret-image'));
+});
+test('URL and manual additions are atomic at library capacity while existing IDs can update',()=>{
+  const library=Array.from({length:2000},(_,i)=>({id:'r'+i,handle:'creator'+i,caption:'Original'}));
+  const copy=structuredClone(library);
+  assert.throws(()=>mergeLibrary(library,[{id:'extra',handle:'extra'}]),/2000|2,000|full/i);
+  assert.deepEqual(library,copy);
+  const updated=mergeLibrary(library,[{id:'r5',handle:'creator5',caption:'Updated'}]);
+  assert.equal(updated.length,2000);assert.equal(updated.find(r=>r.id==='r5').caption,'Updated');
+});
+test('real library merges can replace examples without silently evicting real records',()=>{
+  const merged=mergeLibrary([{id:'demo',handle:'demo',demo:true},{id:'real',handle:'real'}],[{id:'new',handle:'new'}],{dropExamples:true});
+  assert.deepEqual(merged.map(r=>r.id),['real','new']);
 });

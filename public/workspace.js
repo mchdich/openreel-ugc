@@ -1,4 +1,15 @@
-import {normalizeRecords} from './engine.js';
+import {normalizeRecords,MAX_RECORDS} from './engine.js';
+
+/** Validate before replacing state; a full browser library never evicts real records. */
+export function mergeLibrary(records,incoming,{dropExamples=false}={}){
+  if(!Array.isArray(records)||!Array.isArray(incoming))throw new Error('Invalid library records.');
+  const existing=records.length?normalizeRecords(records):[];
+  const additions=incoming.length?normalizeRecords(incoming):[];
+  const merged=new Map(existing.filter(r=>!dropExamples||!r.demo).map(r=>[r.id,r]));
+  for(const record of additions)merged.set(record.id,record);
+  if(merged.size>MAX_RECORDS)throw new Error('Your browser library is full (2,000 records). Export it before replacing records, or use the server corpus. No records were removed.');
+  return [...merged.values()];
+}
 
 const text=(v,max=6000)=>{if(typeof v!=='string')throw new Error('Invalid saved text.');return v.slice(0,max);};
 const recordList=(v)=>{if(!Array.isArray(v))throw new Error('Invalid saved records.');return v.length?normalizeRecords(v):[];};

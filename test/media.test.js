@@ -72,6 +72,11 @@ test('real HTTP provider receives every frame with timestamps and result retains
     assert.equal(received.path, '/v1/chat/completions');
     assert.equal(received.authorization, 'Bearer provider-test-secret');
     assert.equal(received.body.model, 'local-vision');
+    assert.equal(received.body.response_format.type,'json_schema');
+    const schema=received.body.response_format.json_schema.schema;
+    assert.equal(schema.additionalProperties,false);
+    assert.deepEqual(schema.required,['title','summary','sections']);
+    assert.deepEqual(schema.properties.sections.items.properties.timestamps.items.enum,[0,5.5]);
     const user = received.body.messages.find(message => message.role === 'user');
     assert.deepEqual(user.content.filter(part => part.type === 'image_url').map(part => part.image_url.url), [jpeg(), jpeg()]);
     const text = user.content.filter(part => part.type === 'text').map(part => part.text).join('\n');
@@ -113,7 +118,7 @@ test('transcript is explicitly unverified user supplied evidence and model fallb
     assert.match(JSON.stringify(payload.messages), /I made this for you/);
     assert.equal(result.videoAnalysis.audioAvailable, false);
     assert.equal(result.videoAnalysis.transcriptProvided, true);
-    assert.ok(result.sections.some(section => /user.supplied.*unverified|unverified.*user.supplied/i.test(section.text)));
+    assert.ok(result.sections.some(section => /supplied.*unverified|unverified.*supplied/i.test(section.text)));
   });
 });
 
@@ -209,4 +214,16 @@ test('reported analytics never authorize invented counts or positive audio obser
     ['Why200views?', 'At 2s the product is revealed.']
   ];
   for (const [question, summary] of cases) await withProvider(respond(narrative({ summary })), env => rejectsCode(() => analyzeVideo(attachment(), question, env), 'provider-invalid-response', 502));
+});
+test('metadata durations and proposed edit lengths are not mistaken for observed timestamps',async()=>{
+  for(const summary of ['The supplied video is 12 seconds long.','Experiment with a 2 second opening before the next visual.','Try cutting to the product at 2s as an alternate edit.']){
+    await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'How should I improve this?',env)).summary,summary));
+  }
+});
+
+test('repeated citations to the same supplied frame are normalized without adding evidence',async()=>{
+  await withProvider(respond(narrative({sections:[{heading:'Opening',text:'The sampled opening shows the product.',timestamps:[0,0]}]})),async env=>{
+    const value=await analyzeVideo(attachment(),'Review this opening',env);
+    assert.match(value.sections[0].text,/^0s — /);assert.doesNotMatch(value.sections[0].text,/0s, 0s/);
+  });
 });

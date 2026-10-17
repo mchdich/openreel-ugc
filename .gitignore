@@ -6,3 +6,10 @@ dist/
 *.log
 .DS_Store
 .superpowers/
+
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+__pycache__/
+*.py[cod]

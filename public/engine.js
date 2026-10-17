@@ -57,10 +57,20 @@ export function normalizeRecords(input) {
     result.authorUrl = safeLink(result.authorUrl, 'authorUrl');
     result.avatar = safeLink(result.avatar, 'avatar');
     if(row.unavailableMetrics!==undefined&&(!Array.isArray(row.unavailableMetrics)||row.unavailableMetrics.some(m=>!METRIC_FIELDS.includes(m))))throw new Error(`Record ${index+1} has invalid unavailableMetrics.`);
-    result.unavailableMetrics=[...new Set(row.unavailableMetrics||[])];
+    result.unavailableMetrics=[...new Set([...(row.unavailableMetrics||[]),...METRIC_FIELDS.filter(field=>row[field]===undefined||row[field]===null||row[field]==='')])];
     if (result.email && !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(result.email)) throw new Error(`Record ${index + 1} has an invalid email.`);
     if (result.postedAt && !Number.isFinite(Date.parse(result.postedAt))) throw new Error(`Record ${index + 1} has an invalid postedAt date.`);
     result.demo = row.demo === true || row.demo === 'true';
+    if(row.profileEvidence!==undefined){
+      const evidence=row.profileEvidence;
+      if(!evidence||typeof evidence!=='object'||Array.isArray(evidence)||typeof evidence.url!=='string'||typeof evidence.fetchedAt!=='string'||!Number.isFinite(Date.parse(evidence.fetchedAt)))throw new Error(`Record ${index+1} has invalid profile evidence.`);
+      result.profileEvidence={url:safeLink(evidence.url,'profile evidence URL'),fetchedAt:evidence.fetchedAt};
+      for(const field of ['school','location'])if(evidence[field]){
+        const claim=evidence[field];
+        if(typeof claim.value!=='string'||claim.value.length>200||claim.source!=='public-bio-self-description'||typeof claim.text!=='string'||claim.text.length>2000)throw new Error(`Record ${index+1} has invalid ${field} evidence.`);
+        result.profileEvidence[field]={value:claim.value,source:claim.source,text:claim.text};
+      }
+    }
     return result;
   });
 }
@@ -70,7 +80,7 @@ function canonical(value, field) {
   return aliases.find(alias => alias.field === field && alias.values.some(v => clean(v) === normalized))?.canonical || normalized;
 }
 
-function filtersFor(query, options, records) {
+export function searchPlan(query='', options={}, records=[]) {
   const text = lower(query);
   const filters = { ...options };
   let rest = text;
@@ -99,6 +109,7 @@ function filtersFor(query, options, records) {
   });
   extract(/(?:find|show|give(?: me)?|list|top|discover)\s+(\d{1,3})\b/gi, match => { filters.limit = Math.max(1, Math.min(100, Number(match[1]))); });
   if (/\b(?:emails?|e-mail|contacts?)\b/i.test(rest)) filters.emailOnly = true;
+  extract(/\b(?:emails?|e-mail|contacts?)\s+(?:listed\s+)?in\s+(?:(?:their|the|a)\s+)?bio\b/gi,()=>{filters.emailOnly=true;filters.emailInBio=true;});
   // Learn institution labels from the school field, never from captions or transcripts.
   const schools = [...new Set(records.map(record => record.school).filter(Boolean))].sort((a, b) => b.length - a.length);
   for (const name of schools) {
@@ -141,7 +152,7 @@ function filtersFor(query, options, records) {
 
 /** Natural-language constraints and explicit options are ANDed. Creator queries deduplicate handles. */
 export function searchRecords(records, query = '', options = {}) {
-  const { filters, terms } = filtersFor(query, options, records);
+  const { filters, terms } = searchPlan(query, options, records);
   let matches = records.filter(record => {
     if((filters.minFollowers!==undefined||filters.maxFollowers!==undefined)&&record.unavailableMetrics?.includes('followers'))return false;
     if (filters.minFollowers !== undefined && record.followers < Number(filters.minFollowers)) return false;
@@ -149,10 +160,11 @@ export function searchRecords(records, query = '', options = {}) {
     if (filters.school && canonical(record.school, 'school') !== canonical(filters.school, 'school')) return false;
     if (filters.location && canonical(record.location, 'location') !== canonical(filters.location, 'location')) return false;
     if ((filters.emailOnly || filters.hasEmail) && !record.email) return false;
+    if (filters.emailInBio && (!record.email||!lower(record.bio).includes(lower(record.email)))) return false;
     if (filters.niche && !lower(record.niche).includes(lower(filters.niche))) return false;
     if (filters.format && lower(record.format) !== lower(filters.format)) return false;
     if (filters.handle && lower(record.handle) !== lower(filters.handle.startsWith('@') ? filters.handle : `@${filters.handle}`)) return false;
-    const haystack = clean([record.handle, record.caption, record.transcript, record.hook, record.format, record.niche, record.location, record.school].join(' '));
+    const haystack = clean([record.handle, record.caption, record.transcript, record.hook, record.format, record.niche, record.location, record.school,record.bio].join(' '));
     return terms.every(term => haystack.includes(term));
   });
   if ((filters.uniqueCreators !== false && /\bcreators?|influencers?\b/i.test(query)) || filters.uniqueCreators) {
@@ -200,11 +212,18 @@ function statistics(all, matches) {
   };
 }
 
+/** Resolve refinements before retrieval, so result limits cannot erase prior constraints. */
+export function researchQuery(question,history=[]){
+  const message = String(question || '').trim();
+  const previous = [...history].reverse().find(item => item?.role === 'user' && typeof item.content === 'string' && item.content !== message)?.content;
+  return previous && /^(?:only\b|show (?:me )?only\b|those\b|with public emails\b)/i.test(message) ? researchQuery(previous,history.filter(item=>item.content!==previous&&item.content!==message))+' '+message : message;
+}
+
 /** Deterministic research is useful without an AI service and never broadens an empty match. */
 export function research(records, question, history = []) {
   const message = String(question || '').trim();
   const previous = [...history].reverse().find(item => item?.role === 'user' && typeof item.content === 'string' && item.content !== message)?.content;
-  const query = previous && /^(?:only\b|show (?:me )?only\b|those\b|with public emails\b)/i.test(message) ? `${previous} ${message}` : message;
+  const query = researchQuery(message,history);
   const wantsBrief = /\bcreative brief|\bshot list\b/i.test(message);
   const kind = /\b(?:underperform|flop|critique|review this|my (?:script|video)|why did)\b|\b(?:transcript|script)\s*:/i.test(query) ? 'critique'
     : wantsBrief ? 'critique' : /\btrends?|trending|patterns?\b/i.test(query) ? 'trends'
@@ -250,7 +269,7 @@ export function research(records, question, history = []) {
   } else {
     summary = sources.length ? `I found ${sources.length} relevant video${sources.length === 1 ? '' : 's'} in your ${records.length}-video library. Here is what the supplied captions, hooks, transcripts and metrics show.` : 'No records in the current library match this question. Import relevant videos or try a more specific creator, niche or hook.';
     const withHooks = sources.filter(record => record.hook || record.transcript || record.caption).slice(0, 5);
-    for (const record of withHooks) sections.push({ heading: `${record.handle} · ${record.format || 'Supplied opening'}`, text: `“${(record.hook || record.transcript || record.caption).slice(0, 280)}” — ${metricKnown(record,'views')?`${record.views.toLocaleString('en-US')} recorded views`:'view metrics unavailable'}, ${engagementKnown(record)?`${rounded(engagement(record))}% engagement per view`:'engagement metrics unavailable'}. Treat this as an example to test, not a proven causal explanation.` });
+    for (const record of withHooks) sections.push({ heading: `${record.handle} · ${record.hook?'Opening hook':record.transcript?'Transcript excerpt':'Caption'}${record.format?' · '+record.format:''}`, text: `“${(record.hook || record.transcript || record.caption).slice(0, 280)}” — ${metricKnown(record,'views')?`${record.views.toLocaleString('en-US')} recorded views`:'view metrics unavailable'}, ${engagementKnown(record)?`${rounded(engagement(record))}% engagement per view`:'engagement metrics unavailable'}. Treat this as an example to test, not a proven causal explanation.` });
   }
   return { kind, title, summary, sections, sources, creators: kind === 'creators' ? sources : [], stats: statistics(records, sources), trends, mode: 'deterministic', followups: kind === 'creators' ? ['Show matching creators with public emails', 'Find creators around 30K followers'] : ['Which hook formats repeat across creators?', 'Find creators in the beauty niche'] };
 }

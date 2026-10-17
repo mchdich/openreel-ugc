@@ -135,3 +135,13 @@ test('empty creator search stays honest even with a configured model', async () 
     assert.match(value.summary, /no creators/i);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test('audio transcription advertises explicit configuration and guards public provider calls',async()=>{
+  const env={OPENAI_API_KEY:'test-provider-secret',OPENAI_TRANSCRIPTION_MODEL:'tiny.en',OPENREEL_API_TOKEN:'app-secret'};
+  const status=await(await handleApi(new Request('https://audio-status.example/api/status'),env)).json();
+  assert.equal(status.transcriptionConfigured,true);
+  const req=body=>new Request('https://audio-public.example/api/audio/transcribe',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  assert.equal((await handleApi(req({audio:{}}),env)).status,401);
+  const missing=await handleApi(req({audio:{}}),{});assert.equal(missing.status,400);
+  assert.match((await missing.json()).error,/audio|WAV/i);
+});

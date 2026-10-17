@@ -71,5 +71,9 @@ export function createAppServer(env = process.env) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT || 3000);
   const host = process.env.HOST || '127.0.0.1';
-  createAppServer().listen(port, host, () => console.log(`OpenReel is available at http://${host}:${port}`));
+  let corpus;
+  if(process.env.OPENREEL_CORPUS_PATH){const {openCorpus}=await import('./lib/corpus.js');corpus=openCorpus(process.env.OPENREEL_CORPUS_PATH);}
+  const app=createAppServer({...process.env,...(corpus?{OPENREEL_CORPUS:corpus}:{})});
+  app.on('close',()=>corpus?.close());
+  app.listen(port, host, () => console.log(`OpenReel is available at http://${host}:${port}`));
 }

@@ -13,3 +13,8 @@ coverage
 *.key
 *.zip
 *.tar.gz
+
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

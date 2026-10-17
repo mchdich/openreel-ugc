@@ -170,3 +170,28 @@ test('ordinary to follower ranges enforce inclusive bounds', () => {
   ]);
   assert.deepEqual(searchRecords(records, 'Find creators with 10k to 20k followers').map(record => record.handle), ['@minimum', '@maximum']);
 });
+
+test('missing imported measurements stay unknown and cannot match follower bounds',()=>{
+  const records=normalizeRecords([{handle:'unknown'},{handle:'zero',followers:0,views:0}]);
+  assert.ok(records[0].unavailableMetrics.includes('followers'));
+  assert.ok(!records[1].unavailableMetrics.includes('followers'));
+  assert.deepEqual(searchRecords(records,'creators with at least 0 followers').map(r=>r.handle),['@zero']);
+});
+test('email in bio is applied to profile text rather than captions or a separate contact field',()=>{
+  const records=normalizeRecords([
+    {handle:'profile',school:'UCLA',followers:1500,bio:'UCLA | contact hello@example.com',email:'hello@example.com'},
+    {handle:'caption',school:'UCLA',followers:1500,caption:'email hello@example.com',email:'hello@example.com'},
+    {handle:'unrelated',school:'UCLA',followers:1500,bio:'other@example.com',email:'hello@example.com'}
+  ]);
+  assert.deepEqual(searchRecords(records,'Find UCLA creators with email in bio and 1000+ followers').map(r=>r.handle),['@profile']);
+});
+test('normalized creator evidence keeps the public profile citation and self-description status',()=>{
+  const records=normalizeRecords([{handle:'profile',profileEvidence:{url:'https://www.tiktok.com/@profile',fetchedAt:'2026-10-17T00:00:00Z',school:{value:'NYU',source:'public-bio-self-description',text:'NYU'}}}]);
+  assert.equal(records[0].profileEvidence.school.source,'public-bio-self-description');
+  assert.match(records[0].profileEvidence.url,/tiktok/);
+});
+
+test('a social caption is identified as caption evidence rather than an observed video opening',()=>{
+  const records=normalizeRecords([{handle:'maker',caption:'A caption about cooking',views:12}]);
+  const result=research(records,'cooking');assert.match(result.sections[0].heading,/Caption/);assert.doesNotMatch(result.sections[0].heading,/opening/i);
+});

@@ -60,3 +60,9 @@ Desktop measurements included a 762px composer, approximately 151px height, loca
 5. Hosted AI/storage configuration and the final matching published/deployed commit, full test/build output and deployment smoke checks. Docker was not built in this environment.
 
 The real local audiovisual success advances [PARITY.md](PARITY.md); it does not close these requirements or imply the hosted app has local models installed.
+
+## Release integration snapshot
+
+The release integration passed **140 Node tests** and **10 standard-library Python checks**, with the optional local-Parquet integration skipped when PyArrow is absent; all **11 Python checks** passed in the data-tool environment. The generated Worker was exercised with a migrated SQLite implementation of the D1 interface; hosted D1 deployment is verified separately.
+
+Browser regression checks confirmed that explicit Live search overrides retained video context, New chat keeps its selected source after a delayed video response, and a source retrieved from the 4,162-video archival index can be bookmarked and survive reload. The fresh desktop composer measured 762×151px with 24px Inter; a stable 390px mobile viewport had no horizontal overflow. Screenshots in `docs/screenshots/` show the attachment, actual local-model result, indexed research, home and mobile states. Local-model interpretation remains limited by the small diagnostic clips and model accuracy described above.
