@@ -1,6 +1,6 @@
-# Local CPU vision and speech models
+# Local vision and speech models
 
-OpenReel can use local OpenAI-compatible providers without paid API credentials. This manual setup reproduces the tested CPU providers; it does not install models in a hosted deployment. Use **Node.js 24+** for the app. No model weights or native runners are bundled in the repository.
+OpenReel can use local OpenAI-compatible providers without paid API credentials. This manual setup reproduces the tested local providers; it does not install models in a hosted deployment. Use **Node.js 24+** for the app. No model weights or native runners are bundled in the repository.
 
 The verified arrangement used a Linux x64 llama.cpp vision server and a Windows x64 whisper.cpp speech server. Both loopback endpoints were reachable from the Node host. Other platforms can use equivalent official builds, but those combinations were not tested here. Keep downloads outside the checkout; examples use a sibling `openreel-local-models` directory. Check hashes before executing a downloaded runner or loading weights.
 
@@ -23,7 +23,7 @@ Model/runner licenses remain separate from OpenReel’s MIT code license. Retain
 
 The Qwen model and projector total about 1.70 GB; Whisper tiny.en is about 78 MB. Local inference also needs adequate RAM/CPU; these download sizes do not describe total runtime memory.
 
-## Vision server: Linux x64
+## Diagnostic vision baseline: Linux x64 CPU
 
 Run from the checkout, then keep this provider terminal open:
 
@@ -49,7 +49,7 @@ tar -xzf llama-b11669-bin-ubuntu-x64.tar.gz
   --image-min-tokens 64 --image-max-tokens 128 --no-webui --offline
 ```
 
-This is the tested CPU configuration. The reduced image-token budget trades detail for latency; it is not a bounding-box localization or small-text accuracy guarantee. The [official multimodal guide](https://github.com/ggml-org/llama.cpp/blob/b11669/docs/multimodal.md) explains runner support. Changing models or limits requires fresh quality/latency checks.
+This is the original low-detail diagnostic configuration, not a validated natural-video critique setup. Its 64–128 image-token cap is below llama.cpp’s 1024-token recommendation for Qwen grounding. Actual natural-video tests made unsupported subject/action claims; eight low-detail frames did not fix them. A corrected 1024-token, 16k-context CPU run exceeded the maximum 180-second application deadline before generation. See the measured limits below. The [official multimodal guide](https://github.com/ggml-org/llama.cpp/blob/b11669/docs/multimodal.md) explains runner support. Changing models or limits requires fresh quality/latency checks.
 
 ## Speech server: Windows x64
 
@@ -112,3 +112,34 @@ These are one clean synthesized-speech example and a simple generated illustrati
 `audioAvailable:false` means raw acoustics were not given to the vision model. Separate speech recognition can have occurred; vision receives the resulting words as unverified text. Music, speaker identity, vocal delivery, precise word timing, continuous footage and causal performance claims remain unsupported. Local success also does not configure a hosted deployment or complete [full parity](PARITY.md). See [VERIFICATION.md](VERIFICATION.md) and [SECURITY.md](../SECURITY.md).
 
 An additional natural-video test with two actual official-player screenshots reached the default 45-second deadline before the CPU model completed its JSON response. A timeout returns an explicit error and does not retry. The optional bounded deadline above gives a local CPU model longer to finish; it does not establish natural-video accuracy. The hosted deployment has no vision or speech provider configured.
+
+## Additional natural-video and GPU evidence
+
+The same actual public clip was sampled at eight positions across its 26.633333 seconds, without downloading its video/audio. The low-detail CPU run returned in 42.337 seconds but failed production title validation; it also made unsupported age/action claims, attributed the late tattooed-leg view to early package samples, repeated observations instead of proposing an experiment, and ignored the requested brevity.
+
+The [pinned llama.cpp implementation](https://github.com/ggml-org/llama.cpp/blob/620d2225cc436ab0b001e3200e590e3b286ef9ab/tools/mtmd/clip.cpp) warns that Qwen grounding needs at least 1024 image tokens. [Qwen’s model documentation](https://huggingface.co/Qwen/Qwen2-VL-2B-Instruct#image-resolution-for-performance-boost) explains the image-resolution/computation tradeoff. A controlled 1024-token, 16,384-context CPU request used byte-identical images, question, schema and model parameters, with a 180-second adapter deadline; it timed out at 180.009 seconds with no returned narrative. About 3.02 GiB RSS and ample available memory indicate a processing-time limit in this run, not observed memory exhaustion.
+
+A separately prepared native Windows CUDA 12.4 runtime, build b11669 / commit 620d2225c, recognized a Quadro P2000 (5,120 MiB, compute capability 6.1) with driver 553.35. Both official archives were checked against the release API’s SHA256 digests:
+
+| Official archive | Bytes | SHA256 |
+| --- | ---: | --- |
+| `llama-b11669-bin-win-cuda-12.4-x64.zip` | 266,582,698 | `c2da1f73ed176ae093ac5aceb978a7b167a16113f6d74c6789eeaee2135cb8dc` |
+| `cudart-llama-bin-win-cuda-12.4-x64.zip` | 391,443,627 | `8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6` |
+
+They are available from the [official b11669 release](https://github.com/ggml-org/llama.cpp/releases/tag/b11669). Extract both into the same directory so the CUDA runtime DLLs are present. The existing model/projector hashes above remained unchanged. This measured command used all language layers and the projector on GPU, with Flash Attention disabled:
+
+```powershell
+.\llama-server.exe `
+  --model 'C:\path\to\Qwen2-VL-2B-Instruct-Q4_K_M.gguf' `
+  --mmproj 'C:\path\to\mmproj-Qwen2-VL-2B-Instruct-Q8_0.gguf' `
+  --host 127.0.0.1 --port 4321 --alias openreel-qwen2-vl `
+  --threads 8 --threads-batch 8 --ctx-size 16384 --parallel 1 `
+  --n-gpu-layers 999 --flash-attn off `
+  --image-min-tokens 1024 --image-max-tokens 1024 --no-webui --offline
+```
+
+Use the native Windows Node host for this endpoint: Linux localhost forwarding to that listener was unavailable in the observed setup. For this GPU test the app-compatible configuration used `OPENAI_BASE_URL=http://127.0.0.1:4321/v1` and `OPENREEL_VISION_TIMEOUT_MS=180000`, retaining the model alias and strict validation. These are explicit diagnostic settings, not a promise of fit or speed on another machine.
+
+The GPU completed the byte-identical high-detail request in **102.630 seconds**, with 9,355 prompt tokens, 674 completion tokens and zero cached tokens. Whole-device use reached about 4,625/5,120 MiB and 100% GPU utilization. Production structure validation passed, but semantic quality still failed: seven sections repeated a paragraph, all sections cited the opening timestamp even when discussing the final scene, an unseen cut was asserted, and no useful editing experiment was proposed. Recognizing more visible packages/legs did not establish a dependable critique. There is no broad natural-video accuracy claim or automatic retry.
+
+The GPU runtime is therefore verified for transport, memory fit and this deadline, while natural-video interpretation remains inadequate. Model/context changes require new evidence; neither these settings nor local success configure hosted inference or complete full parity.

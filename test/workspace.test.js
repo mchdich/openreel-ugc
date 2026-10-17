@@ -47,3 +47,20 @@ test('saved insights retain bounded source links and supplied rationale with val
   const workspace=normalizeWorkspace({records:[record],conversations:[chat({...result,sections:[{heading:'Insight',text:'Evidence',sourceIds:['one','one','unknown'],rationale:{label:'Hypothesis',text:'Try a different opening.'}}]})]});
   const section=workspace.conversations[0].messages[0].result.sections[0];assert.deepEqual(section.sourceIds,['one']);assert.deepEqual(section.rationale,{label:'Hypothesis',text:'Try a different opening.'});
 });
+
+test('each saved chat retains only its explicit supported research source',()=>{
+ for(const source of ['library','corpus','live']){
+  const workspace=normalizeWorkspace({records:[record],conversations:[{...chat(),source}],activeId:'chat'});
+  assert.equal(workspace.conversations[0].source,source);assert.equal(workspace.activeId,'chat');
+ }
+ for(const source of ['video','unknown',{},null]){
+  const workspace=normalizeWorkspace({records:[record],conversations:[{...chat(),source}]});
+  assert.equal(workspace.conversations.length,1);assert.equal(workspace.conversations[0].source,undefined);
+ }
+});
+test('legacy corpus answers restore their explicit corpus provenance without guessing from prose',()=>{
+ const legacy=normalizeWorkspace({records:[record],conversations:[chat({...result,corpus:{total:154424,byKind:{real:154424}}})]});
+ assert.equal(legacy.conversations[0].source,'corpus');
+ const ordinary=normalizeWorkspace({records:[record],conversations:[chat({...result,notice:'corpus'})]});assert.equal(ordinary.conversations[0].source,undefined);
+ const explicit=normalizeWorkspace({records:[record],conversations:[{...chat({...result,corpus:{total:1,byKind:{real:1}}}),source:'library'}]});assert.equal(explicit.conversations[0].source,'library');
+});

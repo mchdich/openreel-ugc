@@ -35,7 +35,9 @@ function conversation(value){
       if(video&&Number.isInteger(r.videoAnalysis.frameCount)&&r.videoAnalysis.frameCount>=1&&r.videoAnalysis.frameCount<=8&&Array.isArray(r.videoAnalysis.timestamps)&&r.videoAnalysis.timestamps.length===r.videoAnalysis.frameCount&&r.videoAnalysis.timestamps.every(t=>Number.isFinite(t)&&t>=0&&t<=video.duration))result.videoAnalysis={...video,frameCount:r.videoAnalysis.frameCount,timestamps:[...r.videoAnalysis.timestamps],audioAvailable:r.videoAnalysis.audioAvailable===true,transcriptProvided:r.videoAnalysis.transcriptProvided===true};
       return {role:'assistant',result};
     });
-    return {id,title,createdAt:typeof value.createdAt==='string'?value.createdAt:'',messages};
+    const lastAnswer=[...value.messages].reverse().find(message=>message?.role==='assistant'&&message.result)?.result;
+    const source=['library','corpus','live'].includes(value.source)?value.source:value.source===undefined&&Number.isSafeInteger(lastAnswer?.corpus?.byKind?.real)&&lastAnswer.corpus.byKind.real>=0?'corpus':undefined;
+    return {id,title,createdAt:typeof value.createdAt==='string'?value.createdAt:'',messages,...(source?{source}:{})};
   }catch{return null;}
 }
 
