@@ -2,7 +2,7 @@
 
 The Node corpus stores normalized video records in SQLite; the Worker uses the asynchronous D1 adapter. Both index captions, transcripts, separately labeled visual descriptions, hooks, niches, public bios, schools, locations and actual handles with FTS5. Local iterable imports exceed the browser's 2,000-record limit; hosted writes use explicit bounded batches. Both return bounded ranked result pages.
 
-This is infrastructure toward the full demo target. **The verified hosted corpus has 4,424 real records; application integration and query verification of a 150,000+ real-video research corpus remain pending as of October 17, 2026.** A separate optional research index has target-scale real IDs under its own noncommercial data license. The synthetic capacity benchmark below is a different dataset and does not supply real evidence.
+**The normal local product corpus now has 154,424 real records across 4,621 creator identities, with 262 provider-observed records and zero example, synthetic or unverified rows.** Product API queries and native browser bookmark/reload have been verified against it. The separately verified hosted D1 seed remains 4,424 records. The synthetic capacity benchmark below is a different dataset and does not supply real evidence.
 
 ## Runtime and storage
 
@@ -11,6 +11,26 @@ Use **Node.js 24 or newer**, with its built-in [SQLite module](https://nodejs.or
 The SQLite file and its WAL/SHM sidecars contain local research data and are excluded from source control. Back them up with an appropriate SQLite backup process. The module uses WAL mode and transactions; synchronous SQLite work runs on the Node event loop. It is a local storage/search engine, not a distributed indexing service.
 
 `node:sqlite` and local files are unavailable inside the portable Worker. The Worker instead uses the asynchronous D1 adapter below. The local Node database and hosted D1 database are separate stores; configuring one does not copy data into the other.
+
+## Verified full local product corpus
+
+The acquired database at `data/research-nc.sqlite` is connected through the normal `OPENREEL_CORPUS_PATH` server configuration. It combines:
+
+| Source | Real records | Evidence boundary |
+| --- | --- | --- |
+| Optional lingbow research archive | 150,000 | CC-BY-NC-4.0; actual numeric identities, archival metrics, 60,322 upstream transcripts and 150,000 upstream model descriptions. |
+| Publisher-declared MIT archive | 4,162 | Eligible distinct captioned videos from repeated source rows; archival/profile limitations remain. |
+| Fresh public-profile/video snapshots | 262 | Provider-observed public metadata; absent measurements remain unknown. |
+
+The October 17, 2026 product proof reports **154,424 real records, 4,621 creator identities and `providerObservedReal: 262`**. Deep API queries retrieved 1,000 skincare records, with actual caption/transcript/description sources; cooking and unboxing queries also returned cited real evidence. Compound NYU and UCLA queries returned one and two matching creators, retaining original public-bio qualifiers. Native Windows browser research displayed actual `tiktok-7386507456479825195`, bookmarked it and restored it after reload with its unknown username still empty and `sourceType: lingbow-archival-dataset` intact.
+
+```sh
+OPENREEL_CORPUS_PATH=data/research-nc.sqlite npm start
+```
+
+That command uses an already acquired/imported database; it does not download or bundle the data. Follow [RESEARCH_DATA.md](RESEARCH_DATA.md) to reproduce acquisition/import in a separate destination. Source licenses, historical observation dates and upstream-model/ASR labels remain attached. The verified local integration does not mean the full corpus has been copied to hosted D1.
+
+A direct 1,000-record skincare subset produced six recurring-format groups with 152 distinct cited records. Clear phrases in upstream model descriptions supplied the pattern evidence; original `format` and transcript fields remained unchanged. The retained windows cover 2024 supplied calendar dates, with unknown timezones disclosed. These are archival patterns, not evidence of emergence now.
 
 ## Hosted D1 corpus
 
@@ -65,7 +85,7 @@ An existing example/synthetic ID cannot be promoted into the real class. `stats(
 
 Missing/null/blank numeric measurements and explicit `unavailableMetrics` flags remain unknown. SQLite stores unknown metric columns as `NULL`; normalized result payloads retain availability flags. Unknown followers cannot pass follower bounds; genuine measured zeroes remain known. Profile evidence, including public self-description citations, survives normalization and storage. Search never infers a university merely from a caption mention when a school constraint is present.
 
-Numeric-only records retain `handle: ""` and the actual `creatorId`; an unknown username is never replaced by `@<id>`. A player source must use exactly `https://www.tiktok.com/player/v1/<postid>`, without credentials, a query or fragment, and its record ID must equal `tiktok-<postid>`. The existing database handle column stores an internal identity key for grouping, while returned JSON retains the actual handle. Handle filters inspect that actual field. Named and unnamed rows sharing a numeric creator ID count as one creator.
+Numeric-only records retain `handle: ""` and the actual `creatorId`; an unknown username is never replaced by `@<id>`. A player source must use exactly `https://www.tiktok.com/player/v1/<postid>`, without credentials, a query or fragment, and its record ID must equal `tiktok-<postid>`. The existing database handle column stores an internal identity key for grouping, while returned JSON retains the actual handle. Handle filters inspect that actual field. Named and unnamed rows sharing a numeric creator ID count as one creator. The internal boolean `knownHandlesOnly` search option checks the genuine JSON handle before creator deduplication, limits and offsets; indexed Live refresh uses it to avoid selecting unknown usernames.
 
 `visualDescription` requires a declared `descriptionSource`. Its text and the actual handle are projected into the existing transcript **index column only**; `record_json.transcript` remains the original transcript. Returned descriptions therefore remain distinguishable from spoken words. These changes in `f0506b5` require no schema migration, and their focused local/D1-shim tests passed; they do not establish a hosted target-scale import.
 
@@ -126,8 +146,10 @@ try {
 
 Exports are `Corpus`, `openCorpus(path = DEFAULT_CORPUS_PATH, {readOnly = false})`, `DEFAULT_CORPUS_PATH`, and `collectCreatorHandles(corpus, handles, {env, discoverCreator})`. Handle methods are `upsert(iterable, {kind, source, verification})`, `search(query, options)`, `get(id)`, `stats()`, and `close()`.
 
-Search/get return normalized records with `corpusKind`, `corpusVerification`, `corpusSource`, and `corpusImportedAt`. `upsert` returns `{processed, changed, total}`. Search supports the CLI filters plus `niche`, `format`, `handle`, `emailInBio`, and `uniqueCreators`. The acquisition helper returns request/import/change counts and safe per-handle failures.
+Search/get return normalized records with `corpusKind`, `corpusVerification`, `corpusSource`, and `corpusImportedAt`. `upsert` returns `{processed, changed, total}`. Search supports the CLI filters plus `niche`, `format`, `handle`, `emailInBio`, `uniqueCreators` and boolean `knownHandlesOnly`. The acquisition helper returns request/import/change counts and safe per-handle failures.
 
 Focused tests in `test/corpus.test.js` and `test/corpus-worker.test.js` exercise disk persistence, atomic rollback, FTS updates, classification boundaries, unknowns, numeric identities, player-source validation, visual-description separation, follower/profile filters, literal query safety, imports beyond the browser cap, actual CLI behavior, collection deduplication/no retries and creator-count ordering. Run those files together, followed by the full `npm test` command before release.
 
-The incremental `drizzle/0001_corpus_statistics.sql` adds a covering statistics index without changing the applied initial migration. A 154,424-record local index exposed a slow full-table statistics scan over large text records; with the covering index, the measured statistics call took 576 ms and SQLite confirmed a covering-index scan. Node creates this index on a writable open. Apply the incremental migration for D1. These are storage-specific measurements, not a general latency guarantee.
+The incremental, genuinely generated `drizzle/0001_corpus_statistics.sql` adds `corpus_statistics` and `corpus_school_followers` without changing the applied initial migration. On the 154,424-record local store, the covering statistics index reduced a large-text table scan to an observed **576 ms** statistics call. The compound school/follower query had chosen the broad follower index and took about **20.9 seconds**; `ANALYZE` did not change that plan. The composite school/kind/followers index selected the narrow range and the measured SQL query took about **4 ms**. Full API latency also includes statistics and response work; the later compound API checks took about 0.6 seconds.
+
+Node creates these indexes on a writable open. The new `0001` migration is **not yet deployed** to the recorded cloud release; apply it through the migration system for D1. Neither index is created in Worker requests. These are storage/query-specific observations, not a general latency guarantee.

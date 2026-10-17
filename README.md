@@ -4,7 +4,7 @@ An independently written, open source recreation working toward full parity with
 
 ![OpenReel research workspace](docs/screenshots/home.png)
 
-**Full 1:1 parity remains open.** The implementation has real public TikTok metadata, local video/audio preparation, configurable vision and speech models, and persistent SQLite/D1 research. The verified hosted corpus contains **4,424 real records**. A real local browser run combined speech recognition and eight-frame vision analysis. Application integration of a 150,000+ real-video research corpus, broad profile coverage, complete visual-state verification, and hosted AI still need evidence. See [the parity matrix](docs/PARITY.md) and [verification record](docs/VERIFICATION.md).
+**Full 1:1 parity remains open.** The normal local product corpus now serves **154,424 real records across 4,621 creator identities** through the API and browser. The separately verified hosted corpus contains **4,424 real records**. Real local speech/vision inference also works, with documented interpretation errors. Broad profile and critique quality, current trend evidence, complete visual-state verification and hosted AI remain open. See [the parity matrix](docs/PARITY.md) and [verification record](docs/VERIFICATION.md).
 
 [Public app](https://openreel-ugc-mchdich.red-boar-0376.chatgpt.site/) · [Source](https://github.com/mchdich/openreel-ugc). The verified public release is commit [`b27849e`](https://github.com/mchdich/openreel-ugc/commit/b27849ea9ad1a94b9d01672a51de2c395d5758a3), with [passing CI](https://github.com/mchdich/openreel-ugc/actions/runs/39070597861). Newer checkout changes are not yet a verified matching deployment.
 
@@ -36,7 +36,7 @@ The portable Worker entry point is `dist/server/index.js`. Building does not pub
 - **Video follow-ups:** successful analysis retains the video’s frame context in memory for at most two chats. Choose Video to reuse it. Reload or eviction requires reattachment. Explicit Library, Corpus, or Live search selection does not silently reuse retained frames.
 - **Corpus:** when server storage is configured, research a bounded retrieved subset of its real records. Global corpus counts remain separate from records examined in an answer.
 - **Live search:** Apify supports bounded keyword discovery: Normal requests up to 15 records; Deep research up to 30. The newer checkout also supports no-key refresh of at most three public creators selected from an existing real seed index. That path cannot discover creators outside the index. Hosted creator-embed access returned HTTP 502 in the recorded smoke check; local official requests succeeded. Neither a hosted indexed-refresh success nor a paid end-to-end Apify run has been verified.
-- **Sources and trends:** open source links or canonical TikTok players. Trends require repeated supplied format labels across distinct creators; they do not establish platform-wide emergence.
+- **Sources and trends:** open canonical TikTok links or official numeric-ID players. Pattern groups require at least two distinct creator identities and use supplied format labels or explicit phrases in attributed visual descriptions. Groups retain exact evidence excerpts and posting-date coverage; upstream AI descriptions and archival patterns do not establish current emergence.
 - **Workspace:** browser-local chats, bookmarks, imports/exports and saved alerts are available. Alerts check the library while the app is open; there is no background email/push service.
 
 Public-bio school/location matches are self-description evidence, not independently verified enrollment or residence. Ambiguous prose, caption mentions, negation and conflicting bio labels do not establish those fields. See [DATA.md](docs/DATA.md).
@@ -51,9 +51,11 @@ node scripts/corpus.js stats --db data/corpus.sqlite
 
 `handles.txt` contains one known public handle per line. Collection is sequential, deduplicated, and makes one request per handle without automatic retries. To expose that local database in the app, set `OPENREEL_CORPUS_PATH=data/corpus.sqlite` before starting Node.
 
-The hosted D1 snapshot at **2026-10-17T21:30:57.284Z** contained **4,424 real records**: 4,162 archival records plus 262 freshly collected profile/video records, with zero examples or synthetic rows. Compound NYU and UCLA searches with follower and email-in-bio requirements returned one and two creators respectively; the UCLA evidence includes explicit alum/alumna descriptions. These records were imported as `user-supplied`; hosted `providerObservedReal` was zero.
+The normal local database at `data/research-nc.sqlite` now contains **154,424 real records, 4,621 creator identities and 262 provider-observed records**, with zero example, synthetic or unverified rows. It combines the 150,000-record [optional research archive](docs/RESEARCH_DATA.md), 4,162 publisher-declared MIT archival records and 262 fresh public-profile/video records. Actual Deep API queries returned cited skincare, cooking and unboxing records; a native Windows browser displayed, bookmarked and restored an actual numeric-ID source after reload. Use `OPENREEL_CORPUS_PATH=data/research-nc.sqlite npm start` with that acquired database. Databases and acquired data are excluded from the source release.
 
-A separate [optional research archive](docs/RESEARCH_DATA.md) has 150,000 independently indexed real video IDs under its own noncommercial data license. At this documentation update, its import into the application and complete application queries remain pending; it is not the hosted corpus. The separate 150,000-row **synthetic** benchmark proves tested storage capacity only. The code’s MIT license does not relicense imported data. [CORPUS.md](docs/CORPUS.md) documents the stores and provenance boundaries.
+The smaller hosted D1 snapshot at **2026-10-17T21:30:57.284Z** contained **4,424 real records**: the 4,162 archival plus 262 fresh records, with zero examples or synthetic rows. Hosted NYU and UCLA searches combining followers and email in bio returned one and two creators; UCLA evidence includes explicit alum/alumna descriptions. That cloud import remains `user-supplied` with `providerObservedReal: 0`; it is distinct from the full local store and its provenance counts.
+
+The 150,000-record research portion retains its **CC-BY-NC-4.0** data license, original observation dates and upstream ASR/model-description labels. Its application import is verified; that does not make the archival material current or freshly analyzed by OpenReel. The separate 150,000-row **synthetic** benchmark remains capacity evidence only. MIT code does not relicense imported data. [CORPUS.md](docs/CORPUS.md) documents the stores and boundaries.
 
 ## Optional model providers
 
@@ -82,6 +84,7 @@ Missing or invalid providers produce explicit errors, with no simulated audiovis
 | `OPENAI_MODEL` | Text model; text synthesis defaults to `gpt-4.1-mini`. |
 | `OPENAI_VISION_MODEL` | Vision model; falls back to an explicitly configured text model. |
 | `OPENAI_VISION_RESPONSE_FORMAT` | `json_schema` by default; optional legacy `json_object`. |
+| `OPENREEL_VISION_TIMEOUT_MS` | Vision deadline; default 45,000 ms, configurable from 10,000–180,000 for slower providers. |
 | `OPENAI_TRANSCRIPTION_MODEL` | Explicit speech model; no text/vision-model fallback. |
 | `OPENAI_TRANSCRIPTION_BASE_URL` | Optional speech base URL; falls back to `OPENAI_BASE_URL`. |
 | `APIFY_API_TOKEN`, `APIFY_ACTOR_ID` | Optional paid discovery; Actor defaults to `clockworks~tiktok-scraper`. |
