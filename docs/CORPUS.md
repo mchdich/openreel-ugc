@@ -1,8 +1,8 @@
-# Persistent local corpus
+# Persistent local and hosted corpus
 
-The Node-only corpus module stores normalized video records in SQLite and indexes their captions, transcripts, hooks, niches, public bios, schools, locations, and handles with FTS5. It accepts iterable imports without the browser's 2,000-record limit and supports bounded ranked result pages.
+The Node corpus stores normalized video records in SQLite; the Worker uses the asynchronous D1 adapter. Both index captions, transcripts, separately labeled visual descriptions, hooks, niches, public bios, schools, locations and actual handles with FTS5. Local iterable imports exceed the browser's 2,000-record limit; hosted writes use explicit bounded batches. Both return bounded ranked result pages.
 
-This is infrastructure toward the full demo target. **An actual, independently acquired 150,000+ video corpus with transcripts/visual evidence and complete research queries is still required.** The synthetic capacity benchmark below does not supply that corpus.
+This is infrastructure toward the full demo target. **The verified hosted corpus has 4,424 real records; application integration and query verification of a 150,000+ real-video research corpus remain pending as of October 17, 2026.** A separate optional research index has target-scale real IDs under its own noncommercial data license. The synthetic capacity benchmark below is a different dataset and does not supply real evidence.
 
 ## Runtime and storage
 
@@ -29,9 +29,11 @@ curl --fail-with-body "$OPENREEL_URL/api/corpus/import" \
   --data-binary @import-batch.json
 ```
 
-The existing corpus CLI below operates on local SQLite. A remote ingestion CLI is not yet supplied. Public creator/oEmbed/Apify acquisition routes can add their actually observed records through the configured corpus handle.
+The existing corpus CLI below operates on local SQLite. Public creator/oEmbed/Apify acquisition routes can add their actually observed records through the configured corpus handle when their provider request succeeds.
 
-Verification used real SQLite behind an asynchronous D1 binding shim, including real profile acquisition, atomic rollback, full-text updates, and parity checks against the Node corpus. **A hosted D1 migration/deployment and cloud persistence smoke check remain pending.** Local SQL and binding-contract checks do not establish those results.
+Verification first used real SQLite behind an asynchronous D1 binding shim, including real profile acquisition, atomic rollback, full-text updates and parity checks against the Node corpus. An actual hosted migration and persistent cloud seed were then verified on release `b27849e`. At **2026-10-17T21:30:57.284Z**, D1 held **4,424 real records and 2,755 distinct creators**, with zero example, synthetic or unverified rows: 4,162 archival records plus 262 fresh public-profile/video records.
+
+The cloud returned one NYU and two UCLA creators for queries combining school, at least 1,000 followers and email in bio. UCLA evidence includes alum/alumna self-descriptions, not verified current enrollment. A deterministic corpus chat returned real caption sources. All seed rows were imported as `user-supplied`, so hosted `providerObservedReal` was zero despite the source of the fresh observations. Direct cloud creator collection returned HTTP 502 (`CREATOR_UNAVAILABLE`); local official creator requests worked. Persistent cloud search does not prove working hosted TikTok acquisition or configured AI. See [VERIFICATION.md](VERIFICATION.md).
 
 ## Commands
 
@@ -44,15 +46,15 @@ node scripts/corpus.js stats --db data/corpus.sqlite
 
 An import file is a JSON array or `{ "records": [...], "kind": "...", "source": "..." }`. It uses the [record schema](DATA.md). The command-line `--kind` and `--source` override manifest values. A malformed row rolls back the whole import, including any earlier updates and FTS changes. Identical records upsert without duplicates or timestamp churn.
 
-Canonical TikTok URLs without an explicit ID derive the same `tiktok-<video-id>` identifier used by the social adapters. Other source-only records derive a stable source hash; records without a source derive a content hash. Supply explicit IDs when source-less records must retain identity across content edits.
+Canonical TikTok video URLs and strict official player URLs without an explicit ID derive the same `tiktok-<video-id>` identifier used by the social adapters. Other source-only records derive a stable source hash; records without a source derive a content hash including creator identity. Supply explicit IDs when source-less records must retain identity across content edits.
 
-Search defaults to real records. Use `--kind example`, `synthetic`, `unverified`, or `all` deliberately when inspecting other classes. Options include `--limit` (1–1,000), `--offset`, `--school`, `--location`, `--min-followers`, `--max-followers`, and `--email-only`. The shared research query planner extracts natural-language bounds and constraints; remaining terms are quoted literal FTS tokens. SQL parameters are bound. Explicit filters and parsed filters apply together. Creator queries deduplicate matching handles before applying the requested count.
+Search defaults to real records. Use `--kind example`, `synthetic`, `unverified`, or `all` deliberately when inspecting other classes. Options include `--limit` (1–1,000), `--offset`, `--school`, `--location`, `--min-followers`, `--max-followers`, and `--email-only`. The shared research query planner extracts natural-language bounds and constraints; remaining terms are quoted literal FTS tokens. SQL parameters are bound. Explicit filters and parsed filters apply together. Creator queries deduplicate by actual numeric creator ID when supplied, otherwise by handle, before applying the requested count.
 
 ## Real data, examples, and provenance
 
 Counts remain separate:
 
-- **real:** explicitly imported or acquired source records. Each requires a non-fictional canonical TikTok video URL matching its handle, `sourceType`, and a valid `fetchedAt` retrieval timestamp.
+- **real:** explicitly imported or acquired source records. Each requires `sourceType`, a valid `fetchedAt` provenance timestamp, and either a canonical TikTok video URL matching its handle or a strict official player URL with numeric creator identity and matching post ID.
 - **example:** fictional fixtures, marked `demo: true`.
 - **synthetic:** generated capacity/test records, also marked as examples for browser rendering.
 - **unverified:** ordinary imports lacking an explicit real classification; this is the default for unmarked non-example imports.
@@ -62,6 +64,12 @@ An existing example/synthetic ID cannot be promoted into the real class. `stats(
 **Classification is not an independent truth audit.** A `--kind real` JSON import validates source/provenance structure but cannot establish that its asserted caption or statistics are true; its verification label is `user-supplied`. The acquisition helper marks successfully observed provider responses `provider-observed`. Trusted local module callers control that label. Provider observations can still be stale, incomplete, or inaccurate. No file format or database label proves target-scale parity.
 
 Missing/null/blank numeric measurements and explicit `unavailableMetrics` flags remain unknown. SQLite stores unknown metric columns as `NULL`; normalized result payloads retain availability flags. Unknown followers cannot pass follower bounds; genuine measured zeroes remain known. Profile evidence, including public self-description citations, survives normalization and storage. Search never infers a university merely from a caption mention when a school constraint is present.
+
+Numeric-only records retain `handle: ""` and the actual `creatorId`; an unknown username is never replaced by `@<id>`. A player source must use exactly `https://www.tiktok.com/player/v1/<postid>`, without credentials, a query or fragment, and its record ID must equal `tiktok-<postid>`. The existing database handle column stores an internal identity key for grouping, while returned JSON retains the actual handle. Handle filters inspect that actual field. Named and unnamed rows sharing a numeric creator ID count as one creator.
+
+`visualDescription` requires a declared `descriptionSource`. Its text and the actual handle are projected into the existing transcript **index column only**; `record_json.transcript` remains the original transcript. Returned descriptions therefore remain distinguishable from spoken words. These changes in `f0506b5` require no schema migration, and their focused local/D1-shim tests passed; they do not establish a hosted target-scale import.
+
+Data rights remain separate from the application license. An [optional research archive](RESEARCH_DATA.md) can retain a noncommercial license while the original application code remains MIT. Keep source attribution, license terms, observation dates and upstream-model labels with that corpus; source-code licensing does not relicense its records or embedded media.
 
 ## Collect public creator profiles
 
@@ -75,7 +83,7 @@ The collector validates the whole list, normalizes/deduplicates handles, and cal
 
 The adapter returns a bounded public profile snapshot and currently exposed video records, not a complete history or automatic discovery of every creator. It preserves public source identity, profile evidence, retrieval time, known views/followers, and unknown analytics. It does not download videos or create missing transcripts/visual descriptions. Obtain and retain the rights/provenance needed for any larger acquisition.
 
-During implementation, one actual request for `@scout2015` populated the local default database with **10 real records from one creator**, with no example/synthetic rows and `providerObservedReal: 10`. That database is local and ignored by Git; the source release does not include a 150,000-record real dataset.
+An earlier implementation check used one actual request for `@scout2015` to populate a local database with **10 real records from one creator** and `providerObservedReal: 10`. That historical local check is separate from the hosted 4,424-record seed above. Databases are ignored by Git; a source checkout does not itself contain the hosted corpus or optional research archive.
 
 ## Synthetic capacity benchmark
 
@@ -120,4 +128,4 @@ Exports are `Corpus`, `openCorpus(path = DEFAULT_CORPUS_PATH, {readOnly = false}
 
 Search/get return normalized records with `corpusKind`, `corpusVerification`, `corpusSource`, and `corpusImportedAt`. `upsert` returns `{processed, changed, total}`. Search supports the CLI filters plus `niche`, `format`, `handle`, `emailInBio`, and `uniqueCreators`. The acquisition helper returns request/import/change counts and safe per-handle failures.
 
-Focused tests in `test/corpus.test.js` exercise disk persistence, atomic rollback, FTS updates, classification boundaries, unknowns, follower/profile filters, literal query safety, imports beyond the browser cap, actual CLI behavior, collection deduplication/no retries, and creator-count ordering. Run `node --test test/corpus.test.js`, followed by the full `npm test` command before release.
+Focused tests in `test/corpus.test.js` and `test/corpus-worker.test.js` exercise disk persistence, atomic rollback, FTS updates, classification boundaries, unknowns, numeric identities, player-source validation, visual-description separation, follower/profile filters, literal query safety, imports beyond the browser cap, actual CLI behavior, collection deduplication/no retries and creator-count ordering. Run those files together, followed by the full `npm test` command before release.
