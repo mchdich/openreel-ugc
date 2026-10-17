@@ -6,6 +6,8 @@ import {randomUUID} from 'node:crypto';
 import {handleApi} from '../lib/api.js';
 import * as engine from '../public/engine.js';
 import * as workspace from '../public/workspace.js';
+import * as patterns from '../public/patterns.js';
+import * as badge from '../public/badge.js';
 
 const record={id:'budget-source',handle:'@budget',caption:'Beauty morning routine',followers:10000,views:1000};
 let client=0;
@@ -98,7 +100,7 @@ const appSource=(await readFile(new URL('../public/app.js',import.meta.url),'utf
 async function browserSubmission(status,{source='library',video=false}={}){
   const timers=[],requests=[],elements=new Map();
   const node=()=>({innerHTML:'',textContent:'',value:'',classList:{add(){},remove(){},toggle(){},contains(){return false;}},addEventListener(){},focus(){},scrollIntoView(){}});
-  const context=createContext({...engine,...workspace,demoRecords:engine.normalizeRecords([record]),AbortController,URL,Intl,crypto:{randomUUID},
+  const context=createContext({...engine,...workspace,...patterns,...badge,demoRecords:engine.normalizeRecords([record]),AbortController,URL,Intl,crypto:{randomUUID},
     localStorage:{getItem(){return null;},setItem(){}},window:{scrollTo(){}},document:{body:{scrollHeight:0},addEventListener(){},querySelector(selector){if(!elements.has(selector))elements.set(selector,node());return elements.get(selector);}},
     setInterval(){},setTimeout(callback,delay){timers.push({callback,delay});return timers.length;},clearTimeout(){},
     fetch:async(path,init)=>{requests.push({path,init});if(path==='/api/status')return new Response(JSON.stringify(status));if(path==='/api/videos/discover')return new Response(JSON.stringify({records:[record]}));return new Response(JSON.stringify({title:'Research',summary:'Supplied evidence.',sections:[],sources:[],mode:'deterministic'}));}

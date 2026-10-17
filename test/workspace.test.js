@@ -64,3 +64,29 @@ test('legacy corpus answers restore their explicit corpus provenance without gue
  const ordinary=normalizeWorkspace({records:[record],conversations:[chat({...result,notice:'corpus'})]});assert.equal(ordinary.conversations[0].source,undefined);
  const explicit=normalizeWorkspace({records:[record],conversations:[{...chat({...result,corpus:{total:1,byKind:{real:1}}}),source:'library'}]});assert.equal(explicit.conversations[0].source,'library');
 });
+
+test('each assistant turn retains its validated research source across a source change and reload',()=>{
+ for(const researchSource of ['library','corpus','live','video']){
+  const saved={records:[record],conversations:[{...chat(),source:'library',messages:[{role:'assistant',researchSource,result},{role:'assistant',researchSource,error:'This request failed.'}]}]};
+  const first=normalizeWorkspace(saved),restored=normalizeWorkspace(JSON.parse(JSON.stringify(first)));
+  assert.equal(restored.conversations[0].source,'library');
+  assert.deepEqual(restored.conversations[0].messages.map(m=>m.researchSource),[researchSource,researchSource]);
+ }
+ for(const researchSource of ['unknown',{},null,42]){
+  const restored=normalizeWorkspace({records:[record],conversations:[{...chat(),messages:[{role:'assistant',researchSource,result},{role:'assistant',researchSource,error:'Failed.'}]}]});
+  assert.ok(restored.conversations[0].messages.every(m=>!Object.hasOwn(m,'researchSource')));
+ }
+});
+
+test('legacy per-answer evidence uses structured corpus or validated video provenance only',()=>{
+ const videoAnalysis={name:'clip.webm',duration:3,frameCount:2,timestamps:[0,2],audioAvailable:false};
+ const restored=normalizeWorkspace({records:[record],conversations:[{...chat(),messages:[
+  {role:'assistant',result:{...result,corpus:{total:1,byKind:{real:1}}}},
+  {role:'assistant',result:{...result,videoAnalysis}},
+  {role:'assistant',result:{...result,notice:'Live corpus video'}},
+  {role:'assistant',result:{...result,videoAnalysis:{...videoAnalysis,frameCount:9}}},
+  {role:'assistant',result:{...result,corpus:{byKind:{real:'1'}}}}
+ ]}]});
+ assert.deepEqual(restored.conversations[0].messages.map(m=>m.researchSource),['corpus','video',undefined,undefined,undefined]);
+ assert.deepEqual(normalizeWorkspace(JSON.parse(JSON.stringify(restored))).conversations[0].messages.map(m=>m.researchSource),['corpus','video',undefined,undefined,undefined]);
+});
