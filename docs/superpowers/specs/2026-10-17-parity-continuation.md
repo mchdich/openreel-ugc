@@ -1,0 +1,19 @@
+# Full Lightreel demo parity target
+
+This document supersedes any earlier scope exclusions that treated the private index, live discovery or raw-video analysis as optional/outside the requested product. The user's active objective is **continue until it is 1:1**. Approval to continue implementation and publication is already explicit; no intermediate design stop is required.
+
+## Required end state and evidence
+
+1. **Visible fidelity:** independently authored interface matches the referenced March16 launch demo's observable composer, attachment thumbnail, query text, badge, submit control, source-video presentation, trend image fan and creator search results. Preserve the source product's measured layout, spacing and type hierarchy; OpenReel branding may identify the independent release. Evidence: component screenshots compared against work/frame-17.png and work/frame-21.png and a written measured audit. A fresh design with similar colors is not proof.
+2. **Video understanding:** attach an actual video, inspect multiple time-stamped frames and available audio/transcript, critique hook, visual opening, pacing and product reveal, then support follow-ups. Evidence: browser-produced frames from a real local test video and provider analysis using those frames; errors and absent providers never become fictional analysis. Audio availability must be explicit.
+3. **Live discovery and sourcing:** questions can obtain current real video and creator records from a configured live provider, not only the starter fixtures. Direct public TikTok URL ingestion retrieves real metadata through official oEmbed without inventing missing statistics. Evidence: real endpoint smoke checks plus adapter contract tests and a configured end-to-end live query. Unknown metrics remain unknown and cannot satisfy numeric criteria.
+4. **Creator accuracy:** queries combine topic, university, location, follower bounds, number, public contacts and bio-based criteria using actual profile evidence. Caption mentions alone do not establish identity/school. Evidence: strict filters and live profile-supported results.
+5. **Indexed research:** a reproducible, open source acquisition/indexing pipeline can build and query a real corpus comparable to the demo's advertised150,000+ videos, with transcripts/visual descriptions, search and citations. Evidence: corpus counts, acquisition provenance, indexing runtime and full queries across that corpus. A2000-record browser limit or an inflated label is insufficient.
+6. **Hooks and trends:** derive competing hooks, recurring visual formats and emerging multi-creator trends from evidence, surface source clips and explain the pattern. Evidence: full queries, source playback/links, multi-creator groups and actual dates/metrics.
+7. **Public release:** updated MIT-licensed source in the existing public GitHub repository and a deployment of the same verified commit. No proprietary source or unlicensed demo media is redistributed. Data and runtime dependencies are documented reproducibly.
+
+## Next implementation increment
+
+Implement browser-native local video inspection (up to8 JPEG frames from a video ≤50MiB and ≤10minutes), a Worker-compatible multimodal analyzer using server-configured OpenAI-compatible vision models, public TikTok oEmbed ingestion, and a cost-bounded configured Apify discovery adapter. Frame sampling is not full auditory comprehension; preserve that distinction until a tested transcription path is implemented. Do not send model requests without a configured provider, and protect publicly exposed paid APIs with the existing bearer guard.
+
+This increment is progress toward the requirements above, not a redefinition of completion. Remaining corpus-scale, live-provider, audio, profile evidence and pixel-fidelity verification stay open until authoritative evidence proves them.
