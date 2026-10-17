@@ -1,11 +1,13 @@
 {
   "name": "openreel",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "An independent, open source UGC research workspace inspired by Lightreel",
   "type": "module",
   "private": true,
   "license": "MIT",
-  "engines": {"node": ">=24"},
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "test": "node --test",
