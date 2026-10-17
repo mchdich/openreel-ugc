@@ -42,3 +42,8 @@ test('real library merges can replace examples without silently evicting real re
   const merged=mergeLibrary([{id:'demo',handle:'demo',demo:true},{id:'real',handle:'real'}],[{id:'new',handle:'new'}],{dropExamples:true});
   assert.deepEqual(merged.map(r=>r.id),['real','new']);
 });
+
+test('saved insights retain bounded source links and supplied rationale with valid source IDs',()=>{
+  const workspace=normalizeWorkspace({records:[record],conversations:[chat({...result,sections:[{heading:'Insight',text:'Evidence',sourceIds:['one','one','unknown'],rationale:{label:'Hypothesis',text:'Try a different opening.'}}]})]});
+  const section=workspace.conversations[0].messages[0].result.sections[0];assert.deepEqual(section.sourceIds,['one']);assert.deepEqual(section.rationale,{label:'Hypothesis',text:'Try a different opening.'});
+});

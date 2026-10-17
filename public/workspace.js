@@ -27,8 +27,9 @@ function conversation(value){
       if(typeof m.error==='string')return {role:'assistant',error:text(m.error)};
       const r=m.result;
       if(!Array.isArray(r.sections)||r.sections.length>10)throw new Error('Invalid sections.');
+      const sources=recordList(r.sources),sourceIds=new Set(sources.map(record=>record.id));
       const result={kind:typeof r.kind==='string'?r.kind:'research',mode:r.mode==='ai'?'ai':'deterministic',title:text(r.title,300),summary:text(r.summary),
-        sections:r.sections.map(s=>({heading:text(s.heading,200),text:text(s.text,5000)})),sources:recordList(r.sources),creators:recordList(r.creators)};
+        sections:r.sections.map(s=>({heading:text(s.heading,200),text:text(s.text,5000),...(Array.isArray(s.sourceIds)?{sourceIds:[...new Set(s.sourceIds.filter(id=>sourceIds.has(id)))].slice(0,2000)}:{}),...(s.rationale?{rationale:{text:text(s.rationale.text,2000),...(s.rationale.label?{label:text(s.rationale.label,80)}:{})}}:{})})),sources,creators:recordList(r.creators)};
       if(typeof r.notice==='string')result.notice=text(r.notice);
       const video=videoMetadata(r.videoAnalysis);
       if(video&&Number.isInteger(r.videoAnalysis.frameCount)&&r.videoAnalysis.frameCount>=1&&r.videoAnalysis.frameCount<=8&&Array.isArray(r.videoAnalysis.timestamps)&&r.videoAnalysis.timestamps.length===r.videoAnalysis.frameCount&&r.videoAnalysis.timestamps.every(t=>Number.isFinite(t)&&t>=0&&t<=video.duration))result.videoAnalysis={...video,frameCount:r.videoAnalysis.frameCount,timestamps:[...r.videoAnalysis.timestamps],audioAvailable:r.videoAnalysis.audioAvailable===true,transcriptProvided:r.videoAnalysis.transcriptProvided===true};

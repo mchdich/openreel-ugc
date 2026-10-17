@@ -1,6 +1,6 @@
 /** Shared, dependency-free corpus research. All text is plain data for safe rendering. */
 export const MAX_RECORDS = 2000;
-const TEXT_FIELDS = ['id', 'handle', 'caption', 'transcript', 'hook', 'format', 'niche', 'location', 'school', 'postedAt', 'url', 'thumbnail', 'email', 'bio', 'authorUrl', 'avatar', 'sourceType', 'fetchedAt'];
+const TEXT_FIELDS = ['id', 'handle', 'creatorId', 'caption', 'transcript', 'visualDescription', 'descriptionSource', 'hook', 'format', 'niche', 'location', 'school', 'postedAt', 'url', 'thumbnail', 'email', 'bio', 'authorUrl', 'avatar', 'sourceType', 'fetchedAt'];
 const METRIC_FIELDS = ['followers', 'views', 'likes', 'comments', 'shares'];
 const NUM = '(\\d[\\d,]*(?:\\.\\d+)?\\s*[kmb]?)';
 const stopwords = new Set('a an and are as at be by can could content do does did find for from get give has have how i in is it me my of on only or our please show some tell than that the their them there these they this those to us use using video videos want what when where which who why with you your creator creators influencers influencer follower followers email emails public contact contacts least under over above below between around about approximately minimum maximum more less million thousand number top best also university campus college student students competitor competitors hook hooks analyze analyse analysis working work perform performing performance trends trend format formats patterns viral look looking discover list based niche niches right now most successful across multiple'.split(' '));
@@ -14,6 +14,8 @@ const lower = value => String(value || '').toLowerCase().trim();
 const clean = value => lower(value).replace(/[^a-z0-9@.\s]/g, ' ').replace(/\s+/g, ' ').trim();
 const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const contains = (text, phrase) => new RegExp(`(?:^|\\b)${escapeRegExp(phrase)}(?:\\b|$)`, 'i').test(text);
+/** Numeric platform IDs identify creators without fabricating public usernames. */
+export const creatorKey=record=>record.creatorId?`creator:${record.creatorId}`:lower(record.handle);
 const count = value => {
   if (value === undefined || value === null || value === '') return 0;
   const match = String(value).trim().replaceAll(',', '').match(/^(\d+(?:\.\d+)?)\s*([kmb]?)$/i);
@@ -42,13 +44,15 @@ export function normalizeRecords(input) {
       const raw = row[field];
       if (raw !== undefined && raw !== null && typeof raw !== 'string' && typeof raw !== 'number') throw new Error(`Record ${index + 1}: ${field} must be text.`);
       const value = String(raw ?? '').trim();
-      const limit = field === 'transcript' ? 50000 : ['caption', 'hook'].includes(field) ? 10000 : 2000;
+      const limit = ['transcript','visualDescription'].includes(field) ? 50000 : ['caption', 'hook'].includes(field) ? 10000 : 2000;
       if (value.length > limit) throw new Error(`Record ${index + 1}: ${field} is too long.`);
       result[field] = value;
     }
-    if (!/^@?[a-z0-9_.-]{1,80}$/i.test(result.handle)) throw new Error(`Record ${index + 1} needs a valid creator handle.`);
-    result.handle = result.handle.startsWith('@') ? result.handle : `@${result.handle}`;
-    result.id ||= `${result.handle.slice(1)}-${index + 1}`;
+    if(result.creatorId&&!/^\d{1,30}$/.test(result.creatorId))throw new Error(`Record ${index+1} needs a valid numeric creator ID.`);
+    if (result.handle&&!/^@?[a-z0-9_.-]{1,80}$/i.test(result.handle)||!result.handle&&!result.creatorId) throw new Error(`Record ${index + 1} needs a valid creator handle or numeric creator ID.`);
+    if(result.handle)result.handle = result.handle.startsWith('@') ? result.handle : `@${result.handle}`;
+    result.id ||= `${result.handle?result.handle.slice(1):'creator-'+result.creatorId}-${index + 1}`;
+    if(result.visualDescription&&!['upstream-model','user-supplied','provider-observed'].includes(result.descriptionSource))throw new Error(`Record ${index+1} needs a description source.`);
     if (ids.has(result.id)) throw new Error(`Duplicate record id: ${result.id}`);
     ids.add(result.id);
     for (const field of METRIC_FIELDS) result[field] = count(row[field]);
@@ -70,6 +74,14 @@ export function normalizeRecords(input) {
         if(typeof claim.value!=='string'||claim.value.length>200||claim.source!=='public-bio-self-description'||typeof claim.text!=='string'||claim.text.length>2000)throw new Error(`Record ${index+1} has invalid ${field} evidence.`);
         result.profileEvidence[field]={value:claim.value,source:claim.source,text:claim.text};
       }
+    }
+    if(row.archiveProvenance!==undefined){
+      const evidence=row.archiveProvenance;
+      if(!evidence||typeof evidence!=='object'||Array.isArray(evidence)||Object.keys(evidence).length>32)throw new Error(`Record ${index+1} has invalid archive provenance.`);
+      const entries=Object.entries(evidence);
+      for(const [key,value] of entries)if(!/^[a-zA-Z][a-zA-Z0-9_]{0,79}$/.test(key)||['constructor','prototype','__proto__'].includes(key)||!(value===null||typeof value==='boolean'||typeof value==='string'&&value.length<=4000||typeof value==='number'&&Number.isSafeInteger(value)))throw new Error(`Record ${index+1} has invalid archive provenance.`);
+      result.archiveProvenance=Object.fromEntries(entries);
+      if(result.archiveProvenance.sourceUrl)result.archiveProvenance.sourceUrl=safeLink(result.archiveProvenance.sourceUrl,'archive source URL');
     }
     return result;
   });
@@ -164,12 +176,12 @@ export function searchRecords(records, query = '', options = {}) {
     if (filters.niche && !lower(record.niche).includes(lower(filters.niche))) return false;
     if (filters.format && lower(record.format) !== lower(filters.format)) return false;
     if (filters.handle && lower(record.handle) !== lower(filters.handle.startsWith('@') ? filters.handle : `@${filters.handle}`)) return false;
-    const haystack = clean([record.handle, record.caption, record.transcript, record.hook, record.format, record.niche, record.location, record.school,record.bio].join(' '));
+    const haystack = clean([record.handle, record.caption, record.transcript, record.visualDescription, record.hook, record.format, record.niche, record.location, record.school,record.bio].join(' '));
     return terms.every(term => haystack.includes(term));
   });
   if ((filters.uniqueCreators !== false && /\bcreators?|influencers?\b/i.test(query)) || filters.uniqueCreators) {
     const seen = new Set();
-    matches = matches.filter(record => { const key = lower(record.handle); if (seen.has(key)) return false; seen.add(key); return true; });
+    matches = matches.filter(record => { const key = creatorKey(record); if (seen.has(key)) return false; seen.add(key); return true; });
   }
   if (filters.limit !== undefined) matches = matches.slice(0, Math.max(0, Math.min(2000, Number(filters.limit))));
   return matches;
@@ -192,7 +204,7 @@ export function getTrends(records) {
   }
   return [...groups.values()].map(group => ({
     ...group, count: group.records.length,
-    creators: [...new Set(group.records.map(record => lower(record.handle)))],
+    creators: [...new Set(group.records.map(creatorKey))],
     avgViews: group.records.some(r=>metricKnown(r,'views'))?Math.round(average(group.records.filter(r=>metricKnown(r,'views')).map(record => record.views))):null,
     avgEngagementRate: group.records.some(engagementKnown)?rounded(average(group.records.filter(engagementKnown).map(engagement))):null,
     measuredVideos:group.records.filter(r=>metricKnown(r,'views')).length
@@ -204,7 +216,7 @@ function statistics(all, matches) {
   const measuredEngagement=matches.filter(engagementKnown);
   return {
     totalRecords: all.length, matchedRecords: matches.length,
-    uniqueCreators: new Set(matches.map(record => lower(record.handle))).size,
+    uniqueCreators: new Set(matches.map(creatorKey)).size,
     totalViews: measured.length?measured.reduce((sum, record) => sum + record.views, 0):matches.length?null:0,
     avgViews: measured.length?Math.round(average(measured.map(record => record.views))):matches.length?null:0,
     avgEngagementRate: measuredEngagement.length?rounded(average(measuredEngagement.map(engagement))):matches.length?null:0,
@@ -219,8 +231,36 @@ export function researchQuery(question,history=[]){
   return previous && /^(?:only\b|show (?:me )?only\b|those\b|with public emails\b)/i.test(message) ? researchQuery(previous,history.filter(item=>item.content!==previous&&item.content!==message))+' '+message : message;
 }
 
+export const wantsSimilarity=query=>/\b(?:like|similar to)\s+(?:her|him|them|this creator|that creator|@[a-z0-9_.-]+)\b|\bsimilar creators?\b/i.test(query);
+export const similarityQuery=query=>String(query).replace(/\b(?:like|similar to)\s+(?:her|him|them|this creator|that creator|@[a-z0-9_.-]+)/gi,' ').replace(/\bsimilar creators?\b/gi,'creators').trim();
+
+/** Transparent content similarity: never infer appearance or identity from images. */
+export function similarCreators(records,query,reference){
+  const cleaned=similarityQuery(query),limit=searchPlan(cleaned).filters.limit??20;
+  const constraints=cleaned.replace(/\b(find|show|give(?: me)?|list|top|discover)\s+\d{1,3}\b/gi,'$1');
+  const candidates=searchRecords(records,constraints,{uniqueCreators:false});
+  const identityTerms=new Set(aliases.flatMap(alias=>alias.values.flatMap(value=>clean(value).split(' '))));
+  const tokens=record=>{
+    const excluded=new Set([...identityTerms,...clean([record.school,record.location].join(' ')).split(' ')]);
+    const content=[record.niche,record.format,record.caption,record.hook,record.transcript,record.visualDescription,record.bio].join(' ').replace(/https?:\/\/\S+|\S+@\S+|@[a-z0-9_.-]+/gi,' ');
+    return new Set(clean(content).replace(/[.@]/g,' ').split(/\s+/).filter(word=>word.length>2&&!stopwords.has(word)&&!excluded.has(word)&&!/^\d/.test(word)));
+  };
+  const referenceTerms=tokens(reference),ranked=new Map();
+  for(const record of candidates){
+    const key=creatorKey(record);if(key===creatorKey(reference))continue;
+    const terms=tokens(record),sharedTerms=[...referenceTerms].filter(term=>terms.has(term));
+    const sharedNiche=Boolean(reference.niche&&lower(reference.niche)===lower(record.niche));
+    const sharedFormat=Boolean(reference.format&&lower(reference.format)===lower(record.format));
+    if(!sharedTerms.length&&!sharedNiche&&!sharedFormat)continue;
+    const score=sharedTerms.length/Math.sqrt(Math.max(1,referenceTerms.size*terms.size))+(sharedNiche?1:0)+(sharedFormat?0.6:0);
+    const match={record,score,sharedTerms:sharedTerms.slice(0,8),sharedNiche,sharedFormat};
+    if(!ranked.has(key)||ranked.get(key).score<score)ranked.set(key,match);
+  }
+  return [...ranked.values()].sort((a,b)=>b.score-a.score||a.record.id.localeCompare(b.record.id)).slice(0,limit);
+}
+
 /** Deterministic research is useful without an AI service and never broadens an empty match. */
-export function research(records, question, history = []) {
+export function research(records, question, history = [], {reference}={}) {
   const message = String(question || '').trim();
   const previous = [...history].reverse().find(item => item?.role === 'user' && typeof item.content === 'string' && item.content !== message)?.content;
   const query = researchQuery(message,history);
@@ -228,7 +268,9 @@ export function research(records, question, history = []) {
   const kind = /\b(?:underperform|flop|critique|review this|my (?:script|video)|why did)\b|\b(?:transcript|script)\s*:/i.test(query) ? 'critique'
     : wantsBrief ? 'critique' : /\btrends?|trending|patterns?\b/i.test(query) ? 'trends'
     : /\bcreators?|influencers?\b/i.test(query) ? 'creators' : 'research';
-  let sources = searchRecords(records, wantsBrief && previous ? previous : query, { uniqueCreators: kind === 'creators' });
+  const similarity=kind==='creators'&&(Boolean(reference)||wantsSimilarity(query));
+  const similar=similarity&&reference?similarCreators(records,query,reference):[];
+  let sources = similarity?similar.map(match=>match.record):searchRecords(records, wantsBrief && previous ? previous : query, { uniqueCreators: kind === 'creators' });
   const sections = [];
   let title = 'Research from your library';
   let summary = '';
@@ -237,16 +279,22 @@ export function research(records, question, history = []) {
     title = 'Creators that match your brief';
     summary = sources.length ? `I found ${sources.length} matching creator${sources.length === 1 ? '' : 's'} in the ${records.length}-video library. Every profile and contact below comes from your records.` : 'No creators in the current library match all of those filters. Try another school, location or follower range, or import more records.';
     sections.push({ heading: 'How these matches were selected', text: 'School, location, follower range and public email requirements are applied together. Around a follower count means within 20%. Results are unique by handle; contacts appear only when explicitly supplied.' });
+    if(similarity){
+      title='Creators with similar content evidence';
+      summary=!reference?'Select a reference creator using “Find similar creators” on a source record, then send this request again. A pronoun alone does not identify a person.':sources.length?`${sources.length} creator${sources.length===1?' shares':'s share'} content terms or formats with ${reference.handle||'Creator '+reference.creatorId}, after every requested filter is applied. Similarity uses supplied text and format labels.`:'No eligible creators share content terms or formats with the selected reference. Broaden the filters or add more relevant evidence.';
+      sections[0].text='School, location, known follower counts and public bio contacts are checked before content ranking. The selected creator is excluded. Shared terms, niche and format labels determine similarity; appearance and demographic traits are not inferred.';
+      for(const match of similar.slice(0,8))sections.push({heading:match.record.handle||'Creator '+match.record.creatorId,sourceIds:[match.record.id],text:[match.sharedNiche?`Shared niche: ${match.record.niche}.`:'',match.sharedFormat?`Shared format: ${match.record.format}.`:'',match.sharedTerms.length?`Shared content terms: ${match.sharedTerms.join(', ')}.`:''].filter(Boolean).join(' ')});
+    }
   } else if (kind === 'trends') {
     title = 'Patterns across your library';
     trends = getTrends(sources);
     sources = trends.flatMap(trend => trend.records);
     summary = trends.length ? `${trends.length} recurring format${trends.length === 1 ? '' : 's'} appear across multiple creators in the matching library. These are corpus patterns, not a live platform-wide trend feed.` : 'There is not enough matching evidence for a recurring trend. A format needs videos from at least two distinct creators.';
-    for (const trend of trends.slice(0, 6)) sections.push({ heading: trend.format, text: `${trend.count} videos from ${trend.creators.length} creators. ${trend.avgViews===null?'View metrics are unavailable.':`${trend.measuredVideos} measured videos average ${trend.avgViews.toLocaleString('en-US')} views.`} ${trend.avgEngagementRate===null?'Engagement metrics are unavailable.':`Average engagement per view is ${trend.avgEngagementRate}%.`} This is descriptive, not proof that the format caused the performance.` });
+    for (const trend of trends.slice(0, 6)) sections.push({ heading: trend.format,sourceIds:trend.records.map(record=>record.id), text: `${trend.count} videos from ${trend.creators.length} creators. ${trend.avgViews===null?'View metrics are unavailable.':`${trend.measuredVideos} measured videos average ${trend.avgViews.toLocaleString('en-US')} views.`} ${trend.avgEngagementRate===null?'Engagement metrics are unavailable.':`Average engagement per view is ${trend.avgEngagementRate}%.`} This is descriptive, not proof that the format caused the performance.` });
   } else if (kind === 'critique') {
     title = wantsBrief ? 'Creative brief from your script' : 'Video and script critique';
     const provided = (wantsBrief && previous ? previous : query).match(/\b(?:script|transcript)[^:\n]{0,100}:\s*([\s\S]+)/i)?.[1]?.trim();
-    const referenced = records.filter(record => query.includes(record.handle) || (record.url && query.includes(record.url)));
+    const referenced = records.filter(record => record.handle&&query.includes(record.handle) || (record.url && query.includes(record.url)));
     sources = wantsBrief ? sources : referenced;
     const script = provided || sources[0]?.transcript || sources[0]?.caption;
     summary = script ? 'This critique uses the supplied script or stored transcript and available metrics. It cannot assess footage, delivery, retention or the cause of performance from text alone.' : 'I cannot fetch or watch a pasted video URL. Add its transcript or script, plus metrics, to get a grounded critique.';
@@ -268,8 +316,8 @@ export function research(records, question, history = []) {
     if (sources.length) sections.push({ heading: 'Available evidence', text: `${sources.length} supplied record${sources.length === 1 ? '' : 's'} contain ${sources.reduce((sum, record) => sum + record.views, 0).toLocaleString('en-US')} recorded views. Compare against the same creator’s typical results before calling this a flop.` });
   } else {
     summary = sources.length ? `I found ${sources.length} relevant video${sources.length === 1 ? '' : 's'} in your ${records.length}-video library. Here is what the supplied captions, hooks, transcripts and metrics show.` : 'No records in the current library match this question. Import relevant videos or try a more specific creator, niche or hook.';
-    const withHooks = sources.filter(record => record.hook || record.transcript || record.caption).slice(0, 5);
-    for (const record of withHooks) sections.push({ heading: `${record.handle} · ${record.hook?'Opening hook':record.transcript?'Transcript excerpt':'Caption'}${record.format?' · '+record.format:''}`, text: `“${(record.hook || record.transcript || record.caption).slice(0, 280)}” — ${metricKnown(record,'views')?`${record.views.toLocaleString('en-US')} recorded views`:'view metrics unavailable'}, ${engagementKnown(record)?`${rounded(engagement(record))}% engagement per view`:'engagement metrics unavailable'}. Treat this as an example to test, not a proven causal explanation.` });
+    const withHooks = sources.filter(record => record.hook || record.transcript || record.caption || record.visualDescription).slice(0, 5);
+    for (const record of withHooks) sections.push({ heading: `${record.handle||'Creator '+record.creatorId} · ${record.hook?'Opening hook':record.transcript?'Transcript excerpt':record.caption?'Caption':'Upstream AI summary'}${record.format?' · '+record.format:''}`,sourceIds:[record.id], text: `“${(record.hook || record.transcript || record.caption || record.visualDescription).slice(0, 280)}” — ${metricKnown(record,'views')?`${record.views.toLocaleString('en-US')} recorded views`:'view metrics unavailable'}, ${engagementKnown(record)?`${rounded(engagement(record))}% engagement per view`:'engagement metrics unavailable'}. Treat this as an example to test, not a proven causal explanation.` });
   }
   return { kind, title, summary, sections, sources, creators: kind === 'creators' ? sources : [], stats: statistics(records, sources), trends, mode: 'deterministic', followups: kind === 'creators' ? ['Show matching creators with public emails', 'Find creators around 30K followers'] : ['Which hook formats repeat across creators?', 'Find creators in the beauty niche'] };
 }

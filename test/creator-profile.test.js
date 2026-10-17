@@ -208,3 +208,13 @@ test('creator request failures never bypass a barrier, retry, or leak provider r
   }
   await withFetch(async () => { throw new DOMException('secret timeout', 'TimeoutError'); }, () => assert.rejects(discoverCreator('scout2015'), error => error.status === 504 && error.code === 'PROVIDER_TIMEOUT' && !/secret/.test(error.message)));
 });
+
+test('explicit alumni and compact graduation-year bios retain their qualifier without implying current enrollment',async()=>{
+ for(const bio of ['UCLA alumna','UCLA alumnus','UCLA alumni','UCLA graduate',"NYU'27"]){
+  const value=fixture();state(value).userInfo.signature=bio;
+  await withFetch(async()=>response(value),async()=>{
+   const record=(await discoverCreator('scout2015')).records[0];
+   assert.equal(record.school,bio.startsWith('UCLA')?'University of California, Los Angeles':'New York University');assert.equal(record.profileEvidence.school.text,bio);assert.equal(record.profileEvidence.school.source,'public-bio-self-description');
+  });
+ }
+});

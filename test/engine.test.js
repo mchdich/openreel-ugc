@@ -195,3 +195,21 @@ test('a social caption is identified as caption evidence rather than an observed
   const records=normalizeRecords([{handle:'maker',caption:'A caption about cooking',views:12}]);
   const result=research(records,'cooking');assert.match(result.sections[0].heading,/Caption/);assert.doesNotMatch(result.sections[0].heading,/opening/i);
 });
+
+test('research sections link only the records used by each insight',()=>{
+  const rows=normalizeRecords(fixture);const answer=research(rows,'beauty');
+  for(const section of answer.sections){assert.equal(section.sourceIds.length,1);assert.ok(answer.sources.some(r=>r.id===section.sourceIds[0]));assert.match(section.heading,new RegExp(answer.sources.find(r=>r.id===section.sourceIds[0]).handle));}
+  const trends=research(rows,'trends');for(const section of trends.sections){assert.ok(section.sourceIds.length>=2);assert.ok(section.sourceIds.every(id=>trends.sources.some(r=>r.id===id)));}
+});
+
+test('numeric archival identities preserve unknown usernames and distinct creator counts',()=>{
+ const records=normalizeRecords([
+  {id:'tiktok-123',handle:'',creatorId:'789',url:'https://www.tiktok.com/player/v1/123',visualDescription:'A skincare product reveal beside a bathroom mirror.',descriptionSource:'upstream-model'},
+  {id:'tiktok-124',handle:'',creatorId:'790',url:'https://www.tiktok.com/player/v1/124',visualDescription:'A skincare demonstration.',descriptionSource:'upstream-model'}
+ ]);
+ assert.equal(records[0].handle,'');assert.equal(records[0].creatorId,'789');assert.equal(records[0].transcript,'');assert.equal(records[0].descriptionSource,'upstream-model');
+ assert.equal(searchRecords(records,'skincare').length,2);
+ const answer=research(records,'Find skincare creators');assert.equal(answer.creators.length,2);assert.equal(answer.stats.uniqueCreators,2);
+ assert.throws(()=>normalizeRecords([{handle:'',creatorId:'not-a-number'}]),/creator/i);
+ assert.throws(()=>normalizeRecords([{handle:'',creatorId:'789',visualDescription:'Unattributed description'}]),/description/i);
+});
