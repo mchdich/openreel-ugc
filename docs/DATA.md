@@ -1,93 +1,107 @@
-# Corpus data
+# Data, provenance and audiovisual evidence
 
-Creator queries support inclusive `1,000+ followers`, literal exact `1500 followers`, inclusive ranges such as `10k–20k followers` or `10k to 20k followers`, and approximate `around 1500 followers` (±20%). School constraints match the school field, rather than mentions in a caption.
+OpenReel keeps captions, profile bios, scripts/transcripts, measured metrics and sampled pixels distinct. The starter library is fictional; its identities, contacts and analytics must not be presented as real creator research.
 
-OpenReel researches the active corpus in your browser. The bundled corpus is fictional example data, written for this project. Its identities, captions, contact details, and metrics must not be presented as real creator research.
+## Sources and storage
 
-An imported corpus provides records for search, creator filters, source cards, hook comparisons, and trends. It does not grant access to a social platform or retrieve the contents of a source URL.
+The browser library accepts up to **2,000 records**. Optional [SQLite corpus storage](CORPUS.md) indexes iterable imports beyond that limit. Corpus research retrieves a bounded subset; global corpus totals are reported separately from the records examined in an answer. Node 24 is required. Node’s filesystem SQLite backend is unavailable in the portable Worker; a separate hosted backend is not yet verified.
+
+Acquisition paths are JSON/CSV imports, official direct-video oEmbed metadata, free official creator embeds for known handles, and optional configured Apify keyword discovery. Public creator collection provides currently exposed videos and profile snapshots; it does not discover every creator or retrieve complete histories. No source-video download or URL transcription is performed.
+
+Implementation evidence includes **10 provider-observed real videos from one creator** in a local database. A separate **150,000-row synthetic benchmark contains zero real records**. Neither is the required independently acquired 150,000+ real-video corpus with transcript/visual evidence.
 
 ## Import JSON or CSV
 
-Open data settings in the sidebar and choose a JSON or CSV file. Imports are validated before becoming the active corpus. A rejected import should leave the existing library intact. The corpus can contain up to **2,000 records**. An empty import is invalid; research may still legitimately have zero matching records.
-
-Use a JSON array of objects:
+Choose Import data in Library or Settings & data. A JSON import is an array of records; CSV uses the same field names as headers. Validation is atomic: a rejected import preserves the current library. Empty imports are invalid; zero search matches are valid.
 
 ```json
 [
   {
-    "id": "example-001",
+    "id": "fictional-001",
     "handle": "@example.creator",
-    "caption": "Three lessons from my first month of campus cooking",
-    "transcript": "I stopped buying lunch every day. Here are the three changes that helped.",
-    "hook": "Three changes that helped me cook on campus",
+    "caption": "Three lessons from campus cooking",
+    "transcript": "Here are three changes that helped.",
+    "hook": "Three changes that helped",
     "format": "List",
     "niche": "cooking",
-    "location": "New York City",
+    "bio": "Fictional example profile",
     "school": "New York University",
+    "location": "New York City",
     "followers": 28000,
     "views": 42000,
     "likes": 2100,
     "comments": 90,
     "shares": 210,
-    "postedAt": "2026-10-01",
     "email": "creator@example.com",
-    "url": "https://example.com/videos/example-001",
+    "postedAt": "2026-10-01",
+    "url": "https://example.com/videos/fictional-001",
     "demo": true
   }
 ]
 ```
 
-This example is fictional. CSV uses the same field names as column headers:
+This example is fictional. Quote CSV values containing commas/newlines/quotes; double internal quotation marks. Use JSON for nested `profileEvidence` objects and `unavailableMetrics` arrays; CSV import does not decode these nested structures.
 
-```csv
-id,handle,caption,transcript,hook,format,niche,location,school,followers,views,likes,comments,shares,postedAt,email,url,demo
-example-001,@example.creator,"Three lessons from campus cooking","Three changes that helped","Three changes",List,cooking,New York City,New York University,28000,42000,2100,90,210,2026-10-01,creator@example.com,https://example.com/videos/example-001,true
+| Field | Meaning |
+| --- | --- |
+| `handle` | Required identifier, optionally prefixed `@`; normalized to include it. |
+| `id` | Optional stable record ID; duplicate IDs reject a browser import. TikTok adapters use `tiktok-<video-id>`. |
+| `caption`, `hook` | Post description and a separately supplied opening/hook. Captions do not become spoken hooks automatically. |
+| `transcript` | Supplied or explicitly acquired text; provenance/accuracy must be assessed separately. |
+| `format`, `niche` | Supplied content labels used for research/grouping. |
+| `bio` | Public profile text; caption text is not a substitute. |
+| `school`, `location` | Supplied profile attributes or conservative public-bio self-description. |
+| `followers`, `views`, `likes`, `comments`, `shares` | Nonnegative known counts; missing/null/blank values remain unavailable. |
+| `unavailableMetrics` | Array naming unknown metric fields, even when their numeric placeholder is zero. |
+| `email` | Optional valid public contact. Creator adapters extract it only from the public bio. |
+| `postedAt` | Supplied posting date, normally ISO; retrieval time is separate. |
+| `url`, `thumbnail`, `authorUrl`, `avatar` | Absolute HTTP(S) links without credentials; adapters apply stricter source allowlists. |
+| `sourceType`, `fetchedAt` | Source label and retrieval timestamp; adapters use `tiktok-oembed`, `tiktok-creator-embed` or `apify`. |
+| `profileEvidence` | Public profile citation/timestamp and optional school/location self-description claims. |
+| `demo` | Fictional marker, enabled by boolean `true` or CSV `true`. |
+
+Numeric strings may use commas and K/M/B shorthand, e.g. `"12.5K"`. Values round to integers; invalid, negative or unsafe-range numbers are rejected. Text fields are bounded; unknown fields are dropped. A genuine measured zero remains known. Unavailable values display as `—`, cannot meet numeric filters and are excluded from applicable averages.
+
+## Creator evidence and research filters
+
+Creator queries combine topic, school/location, follower bounds, requested count and contact criteria. Examples: `1,000+ followers` is inclusive, `1500 followers` is exact, `10k–20k followers` is inclusive, and `around 1500 followers` allows ±20%. Handles are deduplicated before a requested creator count is applied. Empty matches stay empty.
+
+School constraints use the school field, never caption mentions. Free creator collection recognizes a narrow set of unambiguous bio segments, such as `NYU '27 | based in NYC`; conflicting schools/cities, negation and prose mentions stay blank. This indicates public self-description, not independently verified enrollment or residence. The matching original segment and citation are retained:
+
+```json
+{
+  "url": "https://www.tiktok.com/@example.creator",
+  "fetchedAt": "2026-10-17T12:00:00Z",
+  "school": {
+    "value": "New York University",
+    "source": "public-bio-self-description",
+    "text": "NYU '27"
+  }
+}
 ```
 
-Quote CSV values containing commas, newlines, or quotation marks. Escape a quotation mark inside a quoted value by doubling it. Keep each column in the same order as its header.
+This is the shape of `profileEvidence`; the handle above is fictional. Direct oEmbed does not provide followers/bio/engagement. Creator embeds can supply followers and views but do not supply per-video likes/comments/shares or transcripts. Missing fields stay unknown. Profile/private/error states never become synthetic results.
 
-## Fields
+“Email in bio” requires an actual email in `bio`; an email in a caption or separate contact field alone does not meet it. The API’s public contact field does not imply outreach permission or identity verification.
 
-| Field | Type and meaning |
-| --- | --- |
-| `handle` | Required creator identifier: 1–80 letters, digits, periods, underscores, or hyphens, optionally prefixed by `@`. A missing `@` is added. |
-| `id` | Optional record identifier. Generated from the handle and row number when omitted. Duplicate IDs reject the import. |
-| `caption` | Post caption or a short description. |
-| `transcript` | Transcript or script you supply; the app does not create one from a URL or video upload. |
-| `hook` | Opening line or hook text. |
-| `format` | A consistent hook-format label such as `List` or `Story`; used for trend grouping. |
-| `niche` | Topic/category used in research and filters. |
-| `location` | Creator location as text. |
-| `school` | University or school as text. |
-| `followers` | Nonnegative follower count. |
-| `views` | Nonnegative video-view count. |
-| `likes`, `comments`, `shares` | Nonnegative engagement counts. |
-| `postedAt` | Posting date; use an ISO date such as `2026-10-01`. |
-| `email` | Optional valid, publicly available contact email you have permission to use. |
-| `url` | Optional source link; only absolute `http:` or `https:` URLs without embedded credentials are accepted. |
-| `thumbnail` | Optional image link; same URL restrictions as `url`. |
-| `demo` | Fictional-example marker; only boolean `true` or CSV text `true` enables it. Keep it enabled for fictional records. |
+Trend groups require at least two distinct creators sharing a supplied format. Engagement per view is `(likes + comments + shares) / views × 100` when all inputs are known; zero-view records use zero. Averages use measured records only, and an entirely unmeasured average is `null`. Format repetition in this corpus does not prove a platform-wide emerging trend or causal performance effect.
 
-Numeric values may be numbers or strings, including comma-separated values and shorthand such as `"12.5K"`, `"1.2M"`, or `"1B"`. Values round to integers; negative, invalid, and values above JavaScript's safe integer range are rejected. Omitted or blank metrics become `0`. Optional text defaults to an empty string.
+## Local video, audio and transcription
 
-Transcripts have a 50,000-character limit, captions and hooks have a 10,000-character limit, and other text fields have a 2,000-character limit in addition to the handle restriction. Dates must be parseable; ISO dates are recommended. Unknown properties are discarded. Text stays text; imported HTML is not a supported rendering format. Unsafe source/thumbnail schemes such as `javascript:` and `data:` are rejected.
+Supported local files are limited to **50 MiB** and **600 seconds**. The browser samples up to eight chronological frames, favoring the opening and covering later footage. JPEGs fit within 960px, at most 160 KiB each and 1,280 KiB total. Submitting sends samples/metadata to `/api/video/analyze`; raw video bytes remain local.
 
-Prefer complete, current records. Missing metrics cannot establish that a creator or video performed poorly. Use a consistent format label across creators so trend comparisons are meaningful. Imported labels and source links are user-supplied evidence, not independently verified facts.
+When transcription is configured, the browser uses AudioContext to decode the local audio track, mixes it to mono 16 kHz PCM16 and prepares WAV chunks up to 30 seconds/1 MiB each. On Send, chunks go sequentially to `/api/audio/transcribe` if no manual transcript exists. Completed chunk text can be reused in memory after a failed later request. Decoder failure means no decodable audio or unsupported codec, not proven silence. No speech is substituted on failure.
 
-## How research uses records
+A manual transcript accepts up to 12,000 characters and takes precedence. Machine text also remains unverified. The vision provider receives sampled images and text, not raw acoustics. `videoAnalysis` retains name, duration, frame count, timestamps, `audioAvailable:false` and `transcriptProvided`. Here `audioAvailable:false` means raw audio was unavailable to vision; a separate speech recognizer may have processed extracted audio. Neither words nor stills establish music, speaker identity, acoustic delivery, word timing or unseen continuous motion.
 
-Creator discovery applies the available corpus fields to the requested niche, location/school, follower range, requested count, and public-email requirement together. It deduplicates by creator handle and returns only available matches. "Around" a follower count means within 20%. NYU/New York University, UCLA/University of California Los Angeles, NYC/New York City, and LA/Los Angeles have explicit alias handling. Other school/location filters use the supplied text. It cannot find creators absent from the corpus or infer missing contact details.
+Vision requests default to strict JSON Schema, then local validation checks the narrative/citations. Every section must cite actual supplied timestamps. A legacy JSON-object override does not disable validation. Invalid provider output stays an explicit error.
 
-Trend groups require at least two distinct creators with the same format. Metrics and counts are calculated from the active corpus. Engagement per view is `(likes + comments + shares) / views × 100`; zero-view records use zero. Average engagement is the mean of each record's rate, and average views is the mean record view count. Missing metrics normalized to zero participate in those calculations. A few imported examples cannot establish a platform-wide trend, and multiple videos from one creator do not by themselves establish a multi-creator trend.
+After successful analysis, up to two chats retain frame context in memory for explicit Video follow-ups. Other research selectors use their named data source. Reload/eviction requires reattachment. The “videos watched today” counter records successful submitted attachments; retained follow-ups do not add another count. It is not a count of a private or fully watched index.
 
-Critique works from supplied transcripts/scripts, captions, hooks, and metrics. A source URL provides a citation link. It does not mean the app fetched, downloaded, transcribed, or watched the linked video.
+## Persistence, transfers and export
 
-The default engine is deterministic. An optional server-configured model provider can enrich the prose while corpus records remain the source of cards and metrics. Check the evidence before using generated advice.
+Library records, chats, bookmarks and alerts use the current origin’s localStorage. JPEGs, raw files, WAV payloads and retained visual context do not enter saved workspace/export data. Model answers and evidence metadata can persist. Corpus SQLite files and sidecars stay on the configured server filesystem and need separate backups/access controls.
 
-## Storage, transfer, and export
+Submitting research sends relevant context to your server and enabled providers. Direct/creator imports and inline playback contact TikTok; Live search contacts Apify; thumbnails/source links contact their hosts. Infrastructure/provider retention policies still apply. Imported links and dataset labels do not grant reuse rights or prove factual accuracy.
 
-The browser stores imported records, chats, bookmarks, and alerts in `localStorage` for the current origin. Reading an import file happens locally in that browser. Running research sends the question and corpus context to your app server; an enabled provider can receive that context. Do not import secrets or unnecessary sensitive data.
-
-Opening source links or loading externally hosted thumbnails can make requests to those hosts. Source links do not grant copyright or reuse permission. You remain responsible for the rights, accuracy, and permitted use of imported content.
-
-Use data settings to export what you want to retain or restore the fictional corpus. Browser storage does not sync across origins or devices; clearing site data removes it. Exports may contain your imported contact data and conversation text, so store and share them accordingly.
+Browser storage does not sync origins/devices; clearing it removes local saved state. Export what you need to retain. Exports and corpus files can contain public contacts/conversation text, so handle them accordingly. See [SECURITY.md](../SECURITY.md), [CORPUS.md](CORPUS.md) and [PARITY.md](PARITY.md).
