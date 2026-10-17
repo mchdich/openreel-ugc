@@ -193,22 +193,65 @@ const engagementKnown=record=>['views','likes','comments','shares'].every(field=
 const rounded = value => Math.round(value * 100) / 100;
 const average = values => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 
-/** A pattern needs evidence from two distinct handles; duplicate clips alone are insufficient. */
+/** Supplied labels or explicit described formats need two distinct creator identities. */
 export function getTrends(records) {
-  const groups = new Map();
+  const patterns=[
+    {format:'Unboxing',label:/^unboxing$/i,phrase:/\bunbox(?:ing|es)\b/i},
+    {format:'Before / after',label:/^before\s*(?:\/|and|[-–—])\s*after(?: transformation)?$/i,phrase:/\bbefore\s*(?:\/|and|[-–—])\s*after\b/i},
+    {format:'Step-by-step tutorial',label:/^step[- ]by[- ]step (?:tutorial|demonstration)$/i,phrase:/\bstep[-‐‑–— ]+by[-‐‑–— ]+step\b.{0,45}\b(?:tutorial|demonstration|guide|walkthrough|instructions?)\b|\b(?:tutorial|demonstration|guide|walkthrough)\b.{0,45}\bstep[-‐‑–— ]+by[-‐‑–— ]+step\b/i},
+    {format:'Product demonstration',label:/^product demo(?:nstration)?$/i,phrase:/\bproduct demonstrations?\b|\bdemonstrat(?:es|ing)\s+(?:the\s+)?(?:application|use)\s+of\b.{0,50}\bproducts?\b|\bdemonstrat(?:es|ing)\s+(?:(?:various|different|skincare|beauty|the|these|several|a|new)\s+){0,3}products?\b/i},
+    {format:'Product review',label:/^product reviews?$/i,phrase:/\bproduct reviews?\b|\breview(?:s|ing)?\s+(?:of\s+)?(?:(?:a|an|the|this|these|their|new|skincare|beauty|makeup|cosmetic)\s+){0,4}products?\b/i},
+    {format:'Get ready with me',label:/^(?:grwm|get ready with me)$/i,phrase:/\b(?:grwm|get ready with me)\b/i},
+    {format:'Day in the life',label:/^day[- ]in[- ](?:the[- ]|my[- ]|a[- ])?life$/i,phrase:/\bday[- ]in[- ](?:the[- ]|my[- ]|a[- ])?life\b/i}
+  ];
+  const origins=new Set(['upstream-model','user-supplied','provider-observed']);
+  const evidenceFor=record=>{
+    if(record.format?.trim())return [{format:patterns.find(p=>p.label.test(record.format.trim()))?.format||record.format.trim(),field:'format',excerpt:record.format}];
+    if(!record.visualDescription||!origins.has(record.descriptionSource))return [];
+    const evidence=[];
+    for(const pattern of patterns){
+      for(const sentence of record.visualDescription.split(/(?<=[.!?])\s+|[;\n]+/)){
+        const match=sentence.match(pattern.phrase);if(!match)continue;
+        const before=sentence.slice(0,match.index),after=sentence.slice(match.index+match[0].length);
+        // Quoted promotion, negated formats and future suggestions are not depicted formats.
+        if(/\b(?:not|no|never|without|isn['’]t|doesn['’]t|didn['’]t|wasn['’]t|rather than|instead of)\b[^.!?;]{0,80}$/i.test(before))continue;
+        if(/\b(?:captions?|captioned|text(?: stickers?)?|titles?|titled|hashtags?|says?|said|mentions?|announces?|promises?|advertises?|recommends?|suggests?|discuss(?:es|ing)|debates?|talks? about|is about|explains? why|planned|upcoming)\b[^.!?;]{0,100}$/i.test(before))continue;
+        if(/^[^.!?;]{0,65}\b(?:coming soon|tomorrow|next week|is up|will be|linked? in|not shown|without showing|is suggested)\b/i.test(after))continue;
+        let start=Math.max(0,match.index-80),end=Math.min(sentence.length,match.index+match[0].length+120);
+        if(start>0){const boundary=sentence.indexOf(' ',start);if(boundary>=0&&boundary<match.index)start=boundary+1;}
+        if(end<sentence.length){const boundary=sentence.lastIndexOf(' ',end);if(boundary>match.index+match[0].length)end=boundary;}
+        evidence.push({format:pattern.format,field:'visualDescription',descriptionSource:record.descriptionSource,excerpt:sentence.slice(start,end).trim()});
+        break;
+      }
+    }
+    return evidence;
+  };
+  const postingWindow=rows=>{
+    const dates=[];let unknownTimezoneRecords=0;
+    for(const record of rows){
+      const raw=String(record.postedAt||''),date=raw.match(/^(\d{4}-\d{2}-\d{2})(?:[T ]|$)/)?.[1];
+      if(!date||!Number.isFinite(Date.parse(raw))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)continue;
+      dates.push(date);if(!/[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw))unknownTimezoneRecords++;
+    }
+    dates.sort();return {start:dates[0]??null,end:dates.at(-1)??null,knownRecords:dates.length,unknownRecords:rows.length-dates.length,unknownTimezoneRecords,limit:'Supplied posting calendar dates only; unknown dates are omitted and timezones may be unknown. This window does not establish current emergence or growth.'};
+  };
+  const groups = new Map(),seen=new Set();
   for (const record of records) {
-    if (!record.format) continue;
-    const key = lower(record.format);
-    if (!groups.has(key)) groups.set(key, { format: record.format, records: [] });
-    groups.get(key).records.push(record);
+    if(!record||typeof record!=='object')continue;
+    const identity=creatorKey(record),id=record.id||record;if(!identity||seen.has(id))continue;seen.add(id);
+    for(const evidence of evidenceFor(record)){
+      const key=lower(evidence.format);
+      if(!groups.has(key))groups.set(key,{format:evidence.format,records:[],evidence:[]});
+      const group=groups.get(key);group.records.push(record);group.evidence.push({recordId:record.id,creatorKey:identity,...Object.fromEntries(Object.entries(evidence).filter(([key])=>key!=='format'))});
+    }
   }
-  return [...groups.values()].map(group => ({
-    ...group, count: group.records.length,
-    creators: [...new Set(group.records.map(creatorKey))],
-    avgViews: group.records.some(r=>metricKnown(r,'views'))?Math.round(average(group.records.filter(r=>metricKnown(r,'views')).map(record => record.views))):null,
-    avgEngagementRate: group.records.some(engagementKnown)?rounded(average(group.records.filter(engagementKnown).map(engagement))):null,
-    measuredVideos:group.records.filter(r=>metricKnown(r,'views')).length
-  })).filter(group => group.creators.length >= 2).sort((a, b) => b.avgViews - a.avgViews);
+  return [...groups.values()].map(group=>{
+    const sourceGroups=new Map();for(const evidence of group.evidence){const key=evidence.field+':'+(evidence.descriptionSource||'');if(!sourceGroups.has(key))sourceGroups.set(key,{field:evidence.field,...(evidence.descriptionSource?{descriptionSource:evidence.descriptionSource}:{}),count:0,sourceIds:[]});const source=sourceGroups.get(key);source.count++;source.sourceIds.push(evidence.recordId);}
+    const measured=group.records.filter(r=>metricKnown(r,'views')&&Number.isFinite(r.views)&&r.views>=0);
+    const measuredEngagement=group.records.filter(r=>engagementKnown(r)&&['views','likes','comments','shares'].every(f=>Number.isFinite(r[f])&&r[f]>=0)&&r.views>0);
+    return {...group,count:group.records.length,creators:[...new Set(group.records.map(creatorKey))],sourceGroups:[...sourceGroups.values()],dateWindow:postingWindow(group.records),
+      avgViews:measured.length?Math.round(average(measured.map(r=>r.views))):null,avgEngagementRate:measuredEngagement.length?rounded(average(measuredEngagement.map(engagement))):null,measuredVideos:measured.length};
+  }).filter(group=>group.creators.length>=2).sort((a,b)=>(b.avgViews??-1)-(a.avgViews??-1)||b.creators.length-a.creators.length||a.format.localeCompare(b.format));
 }
 
 function statistics(all, matches) {
@@ -267,7 +310,7 @@ export function research(records, question, history = [], {reference}={}) {
   const wantsBrief = /\bcreative brief|\bshot list\b/i.test(message);
   const kind = /\b(?:underperform|flop|critique|review this|my (?:script|video)|why did)\b|\b(?:transcript|script)\s*:/i.test(query) ? 'critique'
     : wantsBrief ? 'critique' : /\btrends?|trending|patterns?\b/i.test(query) ? 'trends'
-    : /\bcreators?|influencers?\b/i.test(query) ? 'creators' : 'research';
+    : /\bcreators?|influencers?\b/i.test(query)||wantsSimilarity(query) ? 'creators' : 'research';
   const similarity=kind==='creators'&&(Boolean(reference)||wantsSimilarity(query));
   const similar=similarity&&reference?similarCreators(records,query,reference):[];
   let sources = similarity?similar.map(match=>match.record):searchRecords(records, wantsBrief && previous ? previous : query, { uniqueCreators: kind === 'creators' });
@@ -288,9 +331,13 @@ export function research(records, question, history = [], {reference}={}) {
   } else if (kind === 'trends') {
     title = 'Patterns across your library';
     trends = getTrends(sources);
-    sources = trends.flatMap(trend => trend.records);
-    summary = trends.length ? `${trends.length} recurring format${trends.length === 1 ? '' : 's'} appear across multiple creators in the matching library. These are corpus patterns, not a live platform-wide trend feed.` : 'There is not enough matching evidence for a recurring trend. A format needs videos from at least two distinct creators.';
-    for (const trend of trends.slice(0, 6)) sections.push({ heading: trend.format,sourceIds:trend.records.map(record=>record.id), text: `${trend.count} videos from ${trend.creators.length} creators. ${trend.avgViews===null?'View metrics are unavailable.':`${trend.measuredVideos} measured videos average ${trend.avgViews.toLocaleString('en-US')} views.`} ${trend.avgEngagementRate===null?'Engagement metrics are unavailable.':`Average engagement per view is ${trend.avgEngagementRate}%.`} This is descriptive, not proof that the format caused the performance.` });
+    sources = [...new Map(trends.flatMap(trend=>trend.records).map(record=>[record.id,record])).values()];
+    summary = trends.length ? `${trends.length} recurring format${trends.length === 1 ? '' : 's'} appear across multiple creators in the matching records. Groups use supplied format labels or explicit phrases in attributed visual descriptions. These descriptive corpus patterns do not establish current emergence or platform-wide growth.` : 'There is not enough matching format evidence across at least two distinct creators. Add supplied format labels or explicit, attributed visual descriptions; a caption mention alone is insufficient.';
+    for(const trend of trends.slice(0,6)){
+      const basis=trend.sourceGroups.map(source=>`${source.count} ${source.field==='format'?'supplied format label'+(source.count===1?'':'s'):source.descriptionSource==='upstream-model'?'upstream AI-derived visual description'+(source.count===1?'':'s'):source.descriptionSource+' visual description'+(source.count===1?'':'s')}`).join('; ');
+      const window=trend.dateWindow,dateText=window.knownRecords?`Known supplied posting dates: ${window.start} through ${window.end} (${window.knownRecords} dated; ${window.unknownRecords} unknown dates; ${window.unknownTimezoneRecords} unknown timezones).`:'Posting dates are unavailable for these records.';
+      sections.push({heading:trend.format,sourceIds:trend.records.map(record=>record.id),text:`${trend.count} videos from ${trend.creators.length} creators. Evidence: ${basis}. ${dateText} ${trend.avgViews===null?'View metrics are unavailable.':`${trend.measuredVideos} measured videos average ${trend.avgViews.toLocaleString('en-US')} views.`} ${trend.avgEngagementRate===null?'Engagement metrics are unavailable.':`Average engagement per view is ${trend.avgEngagementRate}%.`} ${window.limit} Descriptive averages do not show that the format caused performance.`});
+    }
   } else if (kind === 'critique') {
     title = wantsBrief ? 'Creative brief from your script' : 'Video and script critique';
     const provided = (wantsBrief && previous ? previous : query).match(/\b(?:script|transcript)[^:\n]{0,100}:\s*([\s\S]+)/i)?.[1]?.trim();
