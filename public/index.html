@@ -6,6 +6,7 @@
   <title>OpenReel — Your UGC research workspace</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23181818'/%3E%3Cpath d='M14 11v18l15-9z' fill='white'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/parity.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -21,6 +22,7 @@
   </div>
   <dialog id="modal"><div id="modal-content"></div></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
+  <input id="video-import" type="file" accept="video/*,.mp4,.webm,.mov" hidden>
   <input id="file-import" type="file" accept=".json,.csv,.txt" hidden>
   <script type="module" src="/app.js"></script>
 </body>

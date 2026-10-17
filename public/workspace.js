@@ -2,12 +2,16 @@ import {normalizeRecords} from './engine.js';
 
 const text=(v,max=6000)=>{if(typeof v!=='string')throw new Error('Invalid saved text.');return v.slice(0,max);};
 const recordList=(v)=>{if(!Array.isArray(v))throw new Error('Invalid saved records.');return v.length?normalizeRecords(v):[];};
+function videoMetadata(value){
+  if(!value||typeof value.name!=='string'||!Number.isFinite(value.duration)||value.duration<=0||value.duration>600)return null;
+  return {name:value.name.slice(0,160),duration:value.duration};
+}
 function conversation(value){
   try{
     const id=text(value.id,200),title=text(value.title,200);
     if(!id||!Array.isArray(value.messages))return null;
     const messages=value.messages.slice(-200).map(m=>{
-      if(m.role==='user')return {role:'user',content:text(m.content)};
+      if(m.role==='user'){const attachment=videoMetadata(m.attachment);return {role:'user',content:text(m.content),...(attachment?{attachment}:{})};}
       if(m.role!=='assistant')throw new Error('Invalid message role.');
       if(typeof m.error==='string')return {role:'assistant',error:text(m.error)};
       const r=m.result;
@@ -15,6 +19,8 @@ function conversation(value){
       const result={kind:typeof r.kind==='string'?r.kind:'research',mode:r.mode==='ai'?'ai':'deterministic',title:text(r.title,300),summary:text(r.summary),
         sections:r.sections.map(s=>({heading:text(s.heading,200),text:text(s.text,5000)})),sources:recordList(r.sources),creators:recordList(r.creators)};
       if(typeof r.notice==='string')result.notice=text(r.notice);
+      const video=videoMetadata(r.videoAnalysis);
+      if(video&&Number.isInteger(r.videoAnalysis.frameCount)&&r.videoAnalysis.frameCount>=1&&r.videoAnalysis.frameCount<=8&&Array.isArray(r.videoAnalysis.timestamps)&&r.videoAnalysis.timestamps.length===r.videoAnalysis.frameCount&&r.videoAnalysis.timestamps.every(t=>Number.isFinite(t)&&t>=0&&t<=video.duration))result.videoAnalysis={...video,frameCount:r.videoAnalysis.frameCount,timestamps:[...r.videoAnalysis.timestamps],audioAvailable:r.videoAnalysis.audioAvailable===true,transcriptProvided:r.videoAnalysis.transcriptProvided===true};
       return {role:'assistant',result};
     });
     return {id,title,createdAt:typeof value.createdAt==='string'?value.createdAt:'',messages};

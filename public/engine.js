@@ -1,6 +1,6 @@
 /** Shared, dependency-free corpus research. All text is plain data for safe rendering. */
 export const MAX_RECORDS = 2000;
-const TEXT_FIELDS = ['id', 'handle', 'caption', 'transcript', 'hook', 'format', 'niche', 'location', 'school', 'postedAt', 'url', 'thumbnail', 'email'];
+const TEXT_FIELDS = ['id', 'handle', 'caption', 'transcript', 'hook', 'format', 'niche', 'location', 'school', 'postedAt', 'url', 'thumbnail', 'email', 'bio', 'authorUrl', 'avatar', 'sourceType', 'fetchedAt'];
 const METRIC_FIELDS = ['followers', 'views', 'likes', 'comments', 'shares'];
 const NUM = '(\\d[\\d,]*(?:\\.\\d+)?\\s*[kmb]?)';
 const stopwords = new Set('a an and are as at be by can could content do does did find for from get give has have how i in is it me my of on only or our please show some tell than that the their them there these they this those to us use using video videos want what when where which who why with you your creator creators influencers influencer follower followers email emails public contact contacts least under over above below between around about approximately minimum maximum more less million thousand number top best also university campus college student students competitor competitors hook hooks analyze analyse analysis working work perform performing performance trends trend format formats patterns viral look looking discover list based niche niches right now most successful across multiple'.split(' '));
@@ -54,6 +54,10 @@ export function normalizeRecords(input) {
     for (const field of METRIC_FIELDS) result[field] = count(row[field]);
     result.url = safeLink(result.url, 'url');
     result.thumbnail = safeLink(result.thumbnail, 'thumbnail');
+    result.authorUrl = safeLink(result.authorUrl, 'authorUrl');
+    result.avatar = safeLink(result.avatar, 'avatar');
+    if(row.unavailableMetrics!==undefined&&(!Array.isArray(row.unavailableMetrics)||row.unavailableMetrics.some(m=>!METRIC_FIELDS.includes(m))))throw new Error(`Record ${index+1} has invalid unavailableMetrics.`);
+    result.unavailableMetrics=[...new Set(row.unavailableMetrics||[])];
     if (result.email && !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(result.email)) throw new Error(`Record ${index + 1} has an invalid email.`);
     if (result.postedAt && !Number.isFinite(Date.parse(result.postedAt))) throw new Error(`Record ${index + 1} has an invalid postedAt date.`);
     result.demo = row.demo === true || row.demo === 'true';
@@ -139,6 +143,7 @@ function filtersFor(query, options, records) {
 export function searchRecords(records, query = '', options = {}) {
   const { filters, terms } = filtersFor(query, options, records);
   let matches = records.filter(record => {
+    if((filters.minFollowers!==undefined||filters.maxFollowers!==undefined)&&record.unavailableMetrics?.includes('followers'))return false;
     if (filters.minFollowers !== undefined && record.followers < Number(filters.minFollowers)) return false;
     if (filters.maxFollowers !== undefined && record.followers > Number(filters.maxFollowers)) return false;
     if (filters.school && canonical(record.school, 'school') !== canonical(filters.school, 'school')) return false;
@@ -159,6 +164,8 @@ export function searchRecords(records, query = '', options = {}) {
 }
 
 const engagement = record => record.views ? ((record.likes + record.comments + record.shares) / record.views) * 100 : 0;
+const metricKnown=(record,field)=>!record.unavailableMetrics?.includes(field);
+const engagementKnown=record=>['views','likes','comments','shares'].every(field=>metricKnown(record,field));
 const rounded = value => Math.round(value * 100) / 100;
 const average = values => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 
@@ -174,18 +181,22 @@ export function getTrends(records) {
   return [...groups.values()].map(group => ({
     ...group, count: group.records.length,
     creators: [...new Set(group.records.map(record => lower(record.handle)))],
-    avgViews: Math.round(average(group.records.map(record => record.views))),
-    avgEngagementRate: rounded(average(group.records.map(engagement)))
+    avgViews: group.records.some(r=>metricKnown(r,'views'))?Math.round(average(group.records.filter(r=>metricKnown(r,'views')).map(record => record.views))):null,
+    avgEngagementRate: group.records.some(engagementKnown)?rounded(average(group.records.filter(engagementKnown).map(engagement))):null,
+    measuredVideos:group.records.filter(r=>metricKnown(r,'views')).length
   })).filter(group => group.creators.length >= 2).sort((a, b) => b.avgViews - a.avgViews);
 }
 
 function statistics(all, matches) {
+  const measured=matches.filter(r=>metricKnown(r,'views'));
+  const measuredEngagement=matches.filter(engagementKnown);
   return {
     totalRecords: all.length, matchedRecords: matches.length,
     uniqueCreators: new Set(matches.map(record => lower(record.handle))).size,
-    totalViews: matches.reduce((sum, record) => sum + record.views, 0),
-    avgViews: Math.round(average(matches.map(record => record.views))),
-    avgEngagementRate: rounded(average(matches.map(engagement)))
+    totalViews: measured.length?measured.reduce((sum, record) => sum + record.views, 0):matches.length?null:0,
+    avgViews: measured.length?Math.round(average(measured.map(record => record.views))):matches.length?null:0,
+    avgEngagementRate: measuredEngagement.length?rounded(average(measuredEngagement.map(engagement))):matches.length?null:0,
+    measuredVideos:measured.length
   };
 }
 
@@ -212,7 +223,7 @@ export function research(records, question, history = []) {
     trends = getTrends(sources);
     sources = trends.flatMap(trend => trend.records);
     summary = trends.length ? `${trends.length} recurring format${trends.length === 1 ? '' : 's'} appear across multiple creators in the matching library. These are corpus patterns, not a live platform-wide trend feed.` : 'There is not enough matching evidence for a recurring trend. A format needs videos from at least two distinct creators.';
-    for (const trend of trends.slice(0, 6)) sections.push({ heading: trend.format, text: `${trend.count} videos from ${trend.creators.length} creators average ${trend.avgViews.toLocaleString('en-US')} views and ${trend.avgEngagementRate}% engagement per view. This is descriptive, not proof that the format caused the performance.` });
+    for (const trend of trends.slice(0, 6)) sections.push({ heading: trend.format, text: `${trend.count} videos from ${trend.creators.length} creators. ${trend.avgViews===null?'View metrics are unavailable.':`${trend.measuredVideos} measured videos average ${trend.avgViews.toLocaleString('en-US')} views.`} ${trend.avgEngagementRate===null?'Engagement metrics are unavailable.':`Average engagement per view is ${trend.avgEngagementRate}%.`} This is descriptive, not proof that the format caused the performance.` });
   } else if (kind === 'critique') {
     title = wantsBrief ? 'Creative brief from your script' : 'Video and script critique';
     const provided = (wantsBrief && previous ? previous : query).match(/\b(?:script|transcript)[^:\n]{0,100}:\s*([\s\S]+)/i)?.[1]?.trim();
@@ -239,7 +250,7 @@ export function research(records, question, history = []) {
   } else {
     summary = sources.length ? `I found ${sources.length} relevant video${sources.length === 1 ? '' : 's'} in your ${records.length}-video library. Here is what the supplied captions, hooks, transcripts and metrics show.` : 'No records in the current library match this question. Import relevant videos or try a more specific creator, niche or hook.';
     const withHooks = sources.filter(record => record.hook || record.transcript || record.caption).slice(0, 5);
-    for (const record of withHooks) sections.push({ heading: `${record.handle} · ${record.format || 'Supplied opening'}`, text: `“${(record.hook || record.transcript || record.caption).slice(0, 280)}” — ${record.views.toLocaleString('en-US')} recorded views, ${rounded(engagement(record))}% engagement per view. Treat this as an example to test, not a proven causal explanation.` });
+    for (const record of withHooks) sections.push({ heading: `${record.handle} · ${record.format || 'Supplied opening'}`, text: `“${(record.hook || record.transcript || record.caption).slice(0, 280)}” — ${metricKnown(record,'views')?`${record.views.toLocaleString('en-US')} recorded views`:'view metrics unavailable'}, ${engagementKnown(record)?`${rounded(engagement(record))}% engagement per view`:'engagement metrics unavailable'}. Treat this as an example to test, not a proven causal explanation.` });
   }
   return { kind, title, summary, sections, sources, creators: kind === 'creators' ? sources : [], stats: statistics(records, sources), trends, mode: 'deterministic', followups: kind === 'creators' ? ['Show matching creators with public emails', 'Find creators around 30K followers'] : ['Which hook formats repeat across creators?', 'Find creators in the beauty niche'] };
 }

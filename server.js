@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { handleApi, MAX_BODY_BYTES } from './lib/api.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), 'public');
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json' };
-const csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: http: data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.woff2':'font/woff2' };
+const csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: http: data:; connect-src 'self'; font-src 'self'; media-src 'self' blob: https:; frame-src https://www.tiktok.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 const loopback = address => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address);
 
 function publicOrigin(value) {

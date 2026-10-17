@@ -23,3 +23,10 @@ test('invalid replacement libraries throw without modifying supplied data',()=>{
   const input={records:[{handle:'bad',url:'javascript:alert(1)'}]};const copy=structuredClone(input);
   assert.throws(()=>normalizeWorkspace(input),/url/);assert.deepEqual(input,copy);
 });
+test('attachment evidence survives reload without retaining frame or video payloads',()=>{
+  const workspace=normalizeWorkspace({records:[record],conversations:[{id:'video',title:'Video',messages:[{role:'user',content:'Review this',attachment:{name:'clip.webm',duration:3,frames:['secret-image']}},{role:'assistant',result:{...result,videoAnalysis:{name:'clip.webm',duration:3,frameCount:2,timestamps:[0,2],audioAvailable:false,frames:['secret-image']}}}]}]});
+  const messages=workspace.conversations[0].messages;
+  assert.deepEqual(messages[0].attachment,{name:'clip.webm',duration:3});
+  assert.equal(messages[1].result.videoAnalysis.frameCount,2);
+  assert.ok(!JSON.stringify(workspace).includes('secret-image'));
+});
