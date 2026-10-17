@@ -33,6 +33,29 @@ const safeLink = (value, field) => {
   } catch { throw new Error(`${field} must be an absolute http or https URL without credentials.`); }
 };
 
+const PLAYER_METADATA_FIELDS = ['handle', 'url', 'authorUrl', 'thumbnail', 'avatar'];
+function playerMetadataEvidence(evidence, record, index) {
+  const invalid = () => new Error(`Record ${index + 1} has invalid player metadata evidence.`);
+  if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)
+    || Object.keys(evidence).some(key => !['sourceType', 'sourceUrl', 'observedAt', 'postId', 'fields'].includes(key))
+    || evidence.sourceType !== 'tiktok-public-player-dom' || typeof evidence.postId !== 'string' || !/^\d{1,30}$/.test(evidence.postId)
+    || evidence.sourceUrl !== `https://www.tiktok.com/player/v1/${evidence.postId}` || record.id !== `tiktok-${evidence.postId}`
+    || typeof evidence.observedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(evidence.observedAt)
+    || !Number.isFinite(Date.parse(evidence.observedAt)) || new Date(evidence.observedAt).toISOString() !== evidence.observedAt
+    || !Array.isArray(evidence.fields) || !evidence.fields.length || evidence.fields.length > PLAYER_METADATA_FIELDS.length
+    || new Set(evidence.fields).size !== evidence.fields.length
+    || evidence.fields.some(field => !PLAYER_METADATA_FIELDS.includes(field) || !record[field])) throw invalid();
+  if (!/^@[a-z0-9_][a-z0-9_.]{0,79}$/i.test(record.handle)
+    || record.url !== `https://www.tiktok.com/${record.handle}/video/${evidence.postId}`
+    || record.authorUrl !== `https://www.tiktok.com/${record.handle}`) throw invalid();
+  for (const field of ['thumbnail', 'avatar']) if (evidence.fields.includes(field)) {
+    const url = new URL(record[field]);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port
+      || !['tiktokcdn.com', 'tiktokcdn-us.com', 'tiktokcdn-eu.com'].some(host => url.hostname === host || url.hostname.endsWith(`.${host}`))) throw invalid();
+  }
+  return {sourceType: evidence.sourceType, sourceUrl: evidence.sourceUrl, observedAt: evidence.observedAt, postId: evidence.postId, fields: [...evidence.fields]};
+}
+
 /** Rejects a whole import on any malformed row; never mutates the original input. */
 export function normalizeRecords(input) {
   if (!Array.isArray(input) || input.length === 0 || input.length > MAX_RECORDS) throw new Error(`Import must contain 1–${MAX_RECORDS} records.`);
@@ -83,6 +106,7 @@ export function normalizeRecords(input) {
       result.archiveProvenance=Object.fromEntries(entries);
       if(result.archiveProvenance.sourceUrl)result.archiveProvenance.sourceUrl=safeLink(result.archiveProvenance.sourceUrl,'archive source URL');
     }
+    if(row.metadataEvidence!==undefined)result.metadataEvidence=playerMetadataEvidence(row.metadataEvidence,result,index);
     return result;
   });
 }
