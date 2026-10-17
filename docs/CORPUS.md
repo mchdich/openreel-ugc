@@ -10,7 +10,28 @@ Use **Node.js 24 or newer**, with its built-in [SQLite module](https://nodejs.or
 
 The SQLite file and its WAL/SHM sidecars contain local research data and are excluded from source control. Back them up with an appropriate SQLite backup process. The module uses WAL mode and transactions; synchronous SQLite work runs on the Node event loop. It is a local storage/search engine, not a distributed indexing service.
 
-**Cloudflare Worker limitation:** `node:sqlite` and local filesystem storage are unavailable in the portable Worker environment. Keep `lib/corpus.js` out of the Worker bundle. Node integration can bind a corpus handle to its API; Worker deployments need a separately implemented persistent backend or retain their browser-library behavior. A Worker build alone does not demonstrate indexed-corpus support.
+`node:sqlite` and local files are unavailable inside the portable Worker. The Worker instead uses the asynchronous D1 adapter below. The local Node database and hosted D1 database are separate stores; configuring one does not copy data into the other.
+
+## Hosted D1 corpus
+
+The Worker binds `env.DB` through `openWorkerCorpus(DB)` from `lib/corpus-worker.js`. The source hosting manifest uses `d1: "DB"`. Deployment must apply the supplied `drizzle/0000_corpus.sql` and its genuine Drizzle metadata before requests use the database. Sites packaging carries this directory to `dist/.openai/drizzle/`. The adapter never creates or alters tables inside an API request.
+
+The base table, indexes, constraint, snapshot, and journal were generated with a temporary `drizzle-kit` development tool. Clearly marked custom SQL was appended to that first migration for FTS5 synchronization and an atomic guard against promoting existing example/synthetic IDs into the real class. No Drizzle runtime dependency was added. The actual Drizzle migration reader parsed all twelve statements and applied them successfully to SQLite during verification.
+
+D1 provides [FTS5](https://developers.cloudflare.com/d1/sql-api/sql-statements/) and [transactional batches](https://developers.cloudflare.com/d1/worker-api/d1-database/). Hosted writes validate the entire input before one batch and accept at most **40 records** at a time, within the [free plan's per-invocation query limit](https://developers.cloudflare.com/d1/platform/limits/). They return `{processed, changed}` without scanning global corpus counts; request statistics explicitly after the final acquisition batch. Larger acquisitions need explicit batches; no automatic retry or hidden partial splitting is performed. Source normalization, availability flags, profile evidence, creator filters, and category counts match the local corpus contract.
+
+An operator can submit acquired records to `POST /api/corpus/import`. Set `OPENREEL_API_TOKEN` on the server and send the matching bearer token even for local operator ingestion. The JSON body needs a `records` array of 1–40 real-source records plus a nonempty `source` label; the normal 2 MiB body limit applies. Imported claims remain labeled `user-supplied` rather than provider-observed. The following assumes `import-batch.json` already contains that object:
+
+```sh
+curl --fail-with-body "$OPENREEL_URL/api/corpus/import" \
+  -H "Authorization: Bearer $OPENREEL_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data-binary @import-batch.json
+```
+
+The existing corpus CLI below operates on local SQLite. A remote ingestion CLI is not yet supplied. Public creator/oEmbed/Apify acquisition routes can add their actually observed records through the configured corpus handle.
+
+Verification used real SQLite behind an asynchronous D1 binding shim, including real profile acquisition, atomic rollback, full-text updates, and parity checks against the Node corpus. **A hosted D1 migration/deployment and cloud persistence smoke check remain pending.** Local SQL and binding-contract checks do not establish those results.
 
 ## Commands
 
