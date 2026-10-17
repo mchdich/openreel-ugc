@@ -1,0 +1,15 @@
+.git
+.github
+node_modules
+dist
+work
+outputs
+coverage
+*.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.zip
+*.tar.gz

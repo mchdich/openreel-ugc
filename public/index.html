@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fafaf9"><meta name="description" content="An open source workspace for UGC research, creator discovery and better video hooks.">
+  <title>OpenReel — Your UGC research workspace</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23181818'/%3E%3Cpath d='M14 11v18l15-9z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside id="sidebar" class="sidebar" aria-label="Workspace navigation"></aside>
+  <div id="scrim" class="scrim" hidden></div>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="top-left"><button id="menu-toggle" class="icon-button mobile-menu" aria-label="Open navigation"></button><span id="breadcrumb">Research workspace</span></div>
+      <div class="top-actions"><span class="local-badge"><i></i><span id="engine-status">Local research</span></span><a class="source-link" href="https://github.com/mchdich/openreel-ugc" target="_blank" rel="noopener noreferrer">Source <span aria-hidden="true">↗</span></a></div>
+    </header>
+    <main id="main" tabindex="-1"></main>
+    <footer class="workspace-footer">Independent, open source recreation. <button data-action="about">About the data</button></footer>
+  </div>
+  <dialog id="modal"><div id="modal-content"></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <input id="file-import" type="file" accept=".json,.csv,.txt" hidden>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
