@@ -86,3 +86,30 @@ test('D1 upsert reports write counts without scanning corpus statistics',async()
   binding.calls=[];await corpus.upsert([]);assert.equal(binding.calls.length,0);
  }finally{binding.close();}
 });
+
+// Hosted and local identity grouping must agree without manufacturing @numeric usernames.
+test('D1 preserves numeric player identities and searches separately labelled visual descriptions',async()=>{
+ const {binding,corpus}=open(),local=openCorpus(':memory:');
+ const numeric=(post,creator,extra={})=>({id:`tiktok-${post}`,handle:'',creatorId:creator,url:`https://www.tiktok.com/player/v1/${post}`,caption:'Original skincare caption',transcript:'Original spoken transcript',visualDescription:'A lavender bottle reveal',descriptionSource:'upstream-model',sourceType:'public-archive',fetchedAt:'2026-10-17T00:00:00Z',...extra});
+ try{
+  const records=[numeric('101','901'),numeric('102','901'),numeric('103','902',{id:undefined}),numeric('105','901',{handle:'@campuscreator',url:'https://www.tiktok.com/@campuscreator/video/105'})];
+  await corpus.upsert(records,{kind:'real'});local.upsert(records,{kind:'real'});
+  assert.equal((await corpus.stats()).uniqueCreators,2);assert.equal((await corpus.stats()).total,4);
+  assert.deepEqual((await corpus.search('lavender',{uniqueCreators:true})).map(r=>r.id),local.search('lavender',{uniqueCreators:true}).map(r=>r.id));assert.equal((await corpus.search('lavender',{uniqueCreators:true})).length,2);
+  const saved=await corpus.get('tiktok-103');assert.equal(saved.handle,'');assert.equal(saved.creatorId,'902');assert.equal(saved.transcript,'Original spoken transcript');assert.equal(saved.visualDescription,'A lavender bottle reveal');assert.equal(saved.descriptionSource,'upstream-model');
+  assert.deepEqual(await corpus.search('',{handle:'creator:901'}),[]);assert.deepEqual(await corpus.search('',{handle:'901'}),[]);
+  assert.deepEqual((await corpus.search('',{handle:'campuscreator'})).map(r=>r.id),['tiktok-105']);assert.deepEqual((await corpus.search('campuscreator')).map(r=>r.id),['tiktok-105']);
+  await corpus.upsert([numeric('101','901',{visualDescription:'A saffron bottle reveal'})],{kind:'real'});assert.equal((await corpus.search('saffron')).length,1);assert.equal((await corpus.search('lavender')).length,3);
+ }finally{binding.close();local.close();}
+});
+
+// All numeric-source validation precedes the single atomic hosted batch.
+test('D1 rejects invalid player identity and source metadata without writing a partial batch',async()=>{
+ const {binding,corpus}=open();const valid={id:'tiktok-101',handle:'',creatorId:'901',url:'https://www.tiktok.com/player/v1/101',sourceType:'public-archive',fetchedAt:'2026-10-17T00:00:00Z'};
+ try{
+  for(const patch of [{url:'https://tiktok.com/player/v1/101'},{url:'https://www.tiktok.com/player/v1/101?q=1'},{url:'https://www.tiktok.com/player/v1/101#fragment'},{id:'other-post'},{creatorId:''},{sourceType:''}]){
+   await assert.rejects(corpus.upsert([{...valid,id:'tiktok-100',url:'https://www.tiktok.com/player/v1/100'},{...valid,...patch}],{kind:'real'}),/source|creator|player|post|timestamp|id/i);assert.equal(binding.batches,0);
+  }
+  assert.equal((await corpus.stats()).total,0);
+ }finally{binding.close();}
+});

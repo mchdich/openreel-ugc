@@ -153,3 +153,36 @@ test('creator result count is applied after matching handles are deduplicated',(
   assert.deepEqual(db.search('Find 2 beauty creators').map(record=>record.handle),['@scout2015','@other']);
  }finally{db.close();}
 });
+
+// Numeric platform identity must survive reopen without inventing public usernames.
+test('real player sources persist numeric creators and keep distinct creator counts',t=>{
+ const path=join(temporary(t),'numeric.sqlite');let db=open(path);
+ const numeric=(post,creator)=>({id:`tiktok-${post}`,handle:'',creatorId:creator,url:`https://www.tiktok.com/player/v1/${post}`,caption:'Numeric creator skincare example',sourceType:'public-archive',fetchedAt:source.fetchedAt});
+ db.upsert([numeric('101','901'),numeric('102','901'),numeric('103','902'),{...numeric('105','901'),handle:'@campuscreator',url:'https://www.tiktok.com/@campuscreator/video/105'}],{kind:'real',source:'permitted-archive'});db.close();
+ db=open(path);try{
+  assert.equal(db.stats().total,4);assert.equal(db.stats().uniqueCreators,2);
+  assert.equal(db.search('skincare',{uniqueCreators:true}).length,2);
+  const saved=db.get('tiktok-101');assert.equal(saved.handle,'');assert.equal(saved.creatorId,'901');assert.equal(saved.url,'https://www.tiktok.com/player/v1/101');assert.equal(saved.corpusSource,'permitted-archive');assert.equal(saved.sourceType,'public-archive');
+  assert.deepEqual(db.search('',{handle:'creator:901'}),[]);assert.deepEqual(db.search('',{handle:'901'}),[]);
+  assert.deepEqual(db.search('',{handle:'campuscreator'}).map(r=>r.id),['tiktok-105']);assert.deepEqual(db.search('campuscreator').map(r=>r.id),['tiktok-105']);
+  assert.equal(db.upsert([{...numeric('104','903'),id:undefined}],{kind:'real'}).changed,1);assert.ok(db.get('tiktok-104'));
+ }finally{db.close();}
+});
+
+// Player URLs are evidence only for the exact post and declared numeric creator identity.
+test('real numeric sources reject impostor player routes and mismatched post IDs atomically',()=>{
+ const db=open();const valid={id:'tiktok-101',handle:'',creatorId:'901',url:'https://www.tiktok.com/player/v1/101',sourceType:'public-archive',fetchedAt:source.fetchedAt};
+ const invalid=[{url:'https://tiktok.com/player/v1/101'},{url:'http://www.tiktok.com/player/v1/101'},{url:'https://www.tiktok.com/player/v1/101?download=1'},{url:'https://www.tiktok.com/player/v1/101?'},{url:'https://www.tiktok.com/player/v1/101#video'},{url:'https://www.tiktok.com/player/v1/101#'},{url:'https://www.tiktok.com:8443/player/v1/101'},{url:'https://www.tiktok.com.evil.example/player/v1/101'},{url:'https://user:password@www.tiktok.com/player/v1/101'},{url:'https://www.tiktok.com/player/v1/101/'},{id:'tiktok-102'},{creatorId:''},{creatorId:'not-a-platform-id'},{sourceType:''},{fetchedAt:''}];
+ try{for(const patch of invalid){assert.throws(()=>db.upsert([{...valid,id:'tiktok-100',url:'https://www.tiktok.com/player/v1/100'},{...valid,...patch}],{kind:'real'}),/source|creator|player|post|timestamp|id|url/i);assert.equal(db.stats().total,0);}}finally{db.close();}
+});
+
+// Model visual summaries are searchable while original caption and transcript remain evidence.
+test('visual descriptions enter only the search projection and update stale index terms',()=>{
+ const db=open();try{
+  const record=real({caption:'Original caption',transcript:'Verified spoken words',visualDescription:'A lavender product reveal',descriptionSource:'upstream-model'});
+  db.upsert([record],{kind:'real'});assert.equal(db.search('lavender').length,1);
+  assert.equal(db.get(record.id).transcript,'Verified spoken words');assert.equal(db.get(record.id).caption,'Original caption');assert.equal(db.get(record.id).visualDescription,'A lavender product reveal');assert.equal(db.get(record.id).descriptionSource,'upstream-model');
+  assert.equal(db.upsert([record],{kind:'real'}).changed,0);
+  db.upsert([{...record,visualDescription:'A saffron product reveal'}],{kind:'real'});assert.deepEqual(db.search('lavender'),[]);assert.equal(db.search('saffron').length,1);assert.equal(db.search('spoken').length,1);
+ }finally{db.close();}
+});
