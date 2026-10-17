@@ -9,7 +9,18 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 const csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: http: data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 const loopback = address => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address);
 
+function publicOrigin(value) {
+  if (value === undefined) return '';
+  try {
+    if (typeof value !== 'string' || value !== value.trim()) throw new Error();
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash || !/^https?:\/\/[^/?#]+\/?$/i.test(value)) throw new Error();
+    return url.origin;
+  } catch { throw new Error('OPENREEL_PUBLIC_ORIGIN must be an absolute http or https origin without credentials, a path, query or fragment.'); }
+}
+
 export function createAppServer(env = process.env) {
+  const configuredPublicOrigin = publicOrigin(env.OPENREEL_PUBLIC_ORIGIN);
   return createServer(async (incoming, outgoing) => {
     outgoing.setHeader('x-content-type-options', 'nosniff');
     outgoing.setHeader('referrer-policy', 'no-referrer');
@@ -35,8 +46,10 @@ export function createAppServer(env = process.env) {
         for (const [key, value] of Object.entries(incoming.headers)) if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(', ') : value);
         headers.delete('cf-connecting-ip');
         headers.set('x-openreel-client-ip', incoming.socket.remoteAddress || 'unknown');
-        const request = new Request(url.href, { method: incoming.method, headers, ...(body ? { body } : {}) });
-        const response = await handleApi(request, { ...env, OPENREEL_LOCAL_REQUEST: loopback(incoming.socket.remoteAddress) && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) });
+        // Public origin is operator configuration; forwarded request headers are never trusted.
+        const apiUrl = configuredPublicOrigin ? new URL(url.pathname + url.search, configuredPublicOrigin) : url;
+        const request = new Request(apiUrl.href, { method: incoming.method, headers, ...(body ? { body } : {}) });
+        const response = await handleApi(request, { ...env, OPENREEL_LOCAL_REQUEST: !configuredPublicOrigin && loopback(incoming.socket.remoteAddress) && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) });
         outgoing.writeHead(response.status, Object.fromEntries(response.headers));
         outgoing.end(Buffer.from(await response.arrayBuffer()));
         return;

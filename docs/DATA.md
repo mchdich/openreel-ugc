@@ -1,5 +1,7 @@
 # Corpus data
 
+Creator queries support inclusive `1,000+ followers`, literal exact `1500 followers`, inclusive ranges such as `10k–20k followers` or `10k to 20k followers`, and approximate `around 1500 followers` (±20%). School constraints match the school field, rather than mentions in a caption.
+
 OpenReel researches the active corpus in your browser. The bundled corpus is fictional example data, written for this project. Its identities, captions, contact details, and metrics must not be presented as real creator research.
 
 An imported corpus provides records for search, creator filters, source cards, hook comparisons, and trends. It does not grant access to a social platform or retrieve the contents of a source URL.

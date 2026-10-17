@@ -71,9 +71,16 @@ function filtersFor(query, options, records) {
   const filters = { ...options };
   let rest = text;
   const extract = (pattern, handler) => { rest = rest.replace(pattern, (...args) => { handler(args); return ' '; }); };
+  const range = (minimum, maximum) => {
+    const firstUnit = minimum.trim().match(/[kmb]$/i)?.[0];
+    const lastUnit = maximum.trim().match(/[kmb]$/i)?.[0];
+    filters.minFollowers = count(!firstUnit && lastUnit ? `${minimum.trim()}${lastUnit}` : minimum);
+    filters.maxFollowers = count(!lastUnit && firstUnit ? `${maximum.trim()}${firstUnit}` : maximum);
+  };
   extract(new RegExp(`between\\s+${NUM}\\s+(?:and|to|-)\\s+${NUM}\\s*(?:followers)?`, 'gi'), match => {
-    filters.minFollowers = count(match[1]); filters.maxFollowers = count(match[2]);
+    range(match[1], match[2]);
   });
+  extract(new RegExp(`\\b${NUM}\\s*(?:[-–—]|to)\\s*${NUM}\\s+followers\\b`, 'gi'), match => { range(match[1], match[2]); });
   extract(new RegExp(`(?:at\\s+least|minimum(?:\\s+of)?|>=)\\s*${NUM}\\s*(?:followers)?`, 'gi'), match => { filters.minFollowers = count(match[1]); });
   extract(new RegExp(`(?:more\\s+than|over|above|>)\\s*${NUM}\\s*(?:followers)?`, 'gi'), match => { filters.minFollowers = count(match[1]) + 1; });
   extract(new RegExp(`(?:at\\s+most|maximum(?:\\s+of)?|<=)\\s*${NUM}\\s*(?:followers)?`, 'gi'), match => { filters.maxFollowers = count(match[1]); });
@@ -81,8 +88,31 @@ function filtersFor(query, options, records) {
   extract(new RegExp(`(?:around|about|approximately|~)\\s*${NUM}\\s*(?:followers)?`, 'gi'), match => {
     const value = count(match[1]); filters.minFollowers = value * 0.8; filters.maxFollowers = value * 1.2;
   });
+  extract(new RegExp(`\\b${NUM}\\s*\\+\\s*followers\\b`, 'gi'), match => { filters.minFollowers = count(match[1]); });
+  // A remaining unqualified literal count is exact; qualified bounds were consumed above.
+  extract(new RegExp(`\\b${NUM}\\s+followers\\b`, 'gi'), match => {
+    filters.minFollowers = count(match[1]); filters.maxFollowers = count(match[1]);
+  });
   extract(/(?:find|show|give(?: me)?|list|top|discover)\s+(\d{1,3})\b/gi, match => { filters.limit = Math.max(1, Math.min(100, Number(match[1]))); });
   if (/\b(?:emails?|e-mail|contacts?)\b/i.test(rest)) filters.emailOnly = true;
+  // Learn institution labels from the school field, never from captions or transcripts.
+  const schools = [...new Set(records.map(record => record.school).filter(Boolean))].sort((a, b) => b.length - a.length);
+  for (const name of schools) {
+    if (!filters.school && contains(rest, lower(name))) {
+      filters.school = name;
+      rest = rest.replace(new RegExp(`\\b${escapeRegExp(lower(name))}(?:\\s+(?:university|college|school))?\\b`, 'gi'), ' ');
+    }
+  }
+  if (!filters.school) {
+    const named = rest.match(/(?:^|\b)([a-z][a-z .&'-]{0,70}\b(?:university|college|school)(?:\s+of\s+[a-z][a-z\s.'-]{1,40})?)\s+(?:creators?|influencers?)\b/i);
+    const proper = String(query).match(/\b(?:find|show(?:\s+me)?|list|discover|get|give(?:\s+me)?)\s+(?:\d+\s+)?(.+?)\s+(?:creators?|influencers?)\b/i)?.[1]?.trim();
+    const candidate = named?.[1]?.replace(/^(?:find|show(?:\s+me)?|list|discover|get|give(?:\s+me)?)\s+(?:\d+\s+)?/i, '').trim()
+      || (proper && /^[A-Z]/.test(proper) && !records.some(record => record.niche && contains(lower(proper), lower(record.niche))) ? proper : '');
+    if (candidate) {
+      filters.school = candidate;
+      rest = rest.replace(new RegExp(`\\b${escapeRegExp(lower(candidate))}\\b`, 'gi'), ' ');
+    }
+  }
   // Longer school phrases first: their location component must not create a second constraint.
   for (const alias of aliases) {
     if (alias.values.some(value => contains(rest, value))) {

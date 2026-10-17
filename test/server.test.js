@@ -33,3 +33,36 @@ test('Node bridge rejects escaped filesystem paths and keeps loopback provider c
     assert.doesNotMatch(JSON.stringify(value), /sk-private/);
   }, { OPENAI_API_KEY: 'sk-private' });
 });
+
+test('configured public origin accepts own HTTPS requests and rejects other origins', async () => {
+  await withServer(async base => {
+    const send = origin => fetch(`${base}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json', origin }, body: JSON.stringify({ question: 'Find creators', records: [{ handle: 'proxy', followers: 10000 }] }) });
+    assert.equal((await send('https://openreel.example')).status, 200);
+    assert.equal((await send('https://attacker.example')).status, 403);
+    assert.equal((await send(base)).status, 403);
+  }, { OPENREEL_PUBLIC_ORIGIN: 'https://openreel.example' });
+});
+
+test('public origin keeps AI token protection even when proxy connects over loopback', async () => {
+  await withServer(async base => {
+    const status = await (await fetch(`${base}/api/status`)).json();
+    assert.equal(status.requiresToken, true);
+    const send = token => fetch(`${base}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://openreel.example', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ question: 'Find creators', records: [], mode: 'deterministic' }) });
+    assert.equal((await send()).status, 401);
+    assert.equal((await send('wrong')).status, 401);
+    assert.equal((await send('app-token')).status, 200);
+  }, { OPENREEL_PUBLIC_ORIGIN: 'https://openreel.example', OPENAI_API_KEY: 'sk-private', OPENREEL_API_TOKEN: 'app-token' });
+});
+
+test('malformed public origin is refused before server startup', () => {
+  for (const origin of ['', 'not a url', 'ftp://app.example', 'https://user:pass@app.example', 'https://app.example/path', 'https://app.example?key=x', 'https://app.example#hash']) {
+    assert.throws(() => createAppServer({ OPENREEL_PUBLIC_ORIGIN: origin }), /OPENREEL_PUBLIC_ORIGIN/);
+  }
+});
+
+test('forwarded headers never change unconfigured origin or loopback auth decisions', async () => {
+  await withServer(async base => {
+    const response = await fetch(`${base}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://attacker.example', 'x-forwarded-proto': 'https', 'x-forwarded-host': 'attacker.example', forwarded: 'proto=https;host=attacker.example' }, body: JSON.stringify({ question: 'Find creators', records: [] }) });
+    assert.equal(response.status, 403);
+  });
+});

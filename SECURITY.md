@@ -1,5 +1,7 @@
 # Security
 
+When a TLS proxy sits in front of Node, set `OPENREEL_PUBLIC_ORIGIN` to the exact HTTPS origin. OpenReel does not trust forwarded protocol headers. This configuration also disables local authentication exemptions for provider-backed API requests.
+
 OpenReel is a small self-hosted app with browser-local storage and an optional model-provider connection. There is no account system or shared server-side database.
 
 ## Deployment boundaries

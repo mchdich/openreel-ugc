@@ -2,6 +2,8 @@
 
 An independently written, MIT-licensed recreation of the visible Lightreel research experience: ask about hooks, compare creator performance, discover creators, and explore trends in a corpus you control.
 
+![OpenReel research workspace](docs/screenshots/home.png)
+
 OpenReel starts with fictional example records and deterministic analysis. It does **not** include Lightreel's private 150,000+ video index, proprietary models, source code, or third-party demo video. It does not scrape TikTok or Instagram, download videos, or watch raw video. Import transcripts or scripts to ground video critique. An optional OpenAI-compatible provider can enrich answers using the records you supply.
 
 ## Run locally
@@ -50,6 +52,7 @@ Use a provider's supported model name and OpenAI-compatible chat endpoint base U
 | --- | --- |
 | `PORT` | HTTP listen port; default `3000`. |
 | `HOST` | Listen address; defaults to loopback. Use `0.0.0.0` deliberately for a container or remote host. |
+| `OPENREEL_PUBLIC_ORIGIN` | Exact public origin, such as `https://research.example.com`, when Node runs behind a TLS proxy. Explicit configuration preserves same-origin checks and requires tokens for public AI. Forwarded headers are not trusted. |
 | `OPENAI_API_KEY` | Optional server-side model-provider credential. |
 | `OPENAI_BASE_URL` | Optional OpenAI-compatible provider base URL. |
 | `OPENAI_MODEL` | Provider model identifier. |

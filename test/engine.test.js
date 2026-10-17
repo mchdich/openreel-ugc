@@ -123,3 +123,50 @@ test('script composer produces a concrete rewrite and a brief followup uses the 
   assert.ok(brief.sections.some(section => /shot list/i.test(section.heading)));
   assert.ok(brief.sections.some(section => /lecture notes|practice questions/.test(section.text)));
 });
+
+test('school requests constrain the school field rather than caption mentions', () => {
+  const records = normalizeRecords([
+    { id: 'harvard', handle: 'harvard', school: 'Harvard', caption: 'Student routine' },
+    { id: 'stanford', handle: 'stanford', school: 'Stanford', caption: 'Visiting Harvard University and meeting Harvard creators' },
+    { id: 'toronto', handle: 'toronto', school: 'University of Toronto', caption: 'Campus routine' }
+  ]);
+  for (const question of ['Find Harvard creators', 'Find harvard creators', 'Find Harvard University creators', 'Find creators at Harvard', 'Find creators from Harvard']) {
+    assert.deepEqual(searchRecords(records, question).map(record => record.id), ['harvard'], question);
+  }
+  assert.deepEqual(searchRecords(records, 'Find University of Toronto creators').map(record => record.id), ['toronto']);
+  assert.deepEqual(searchRecords(records.filter(record => record.id !== 'harvard'), 'Find Harvard creators'), []);
+  assert.deepEqual(searchRecords(records, 'Find Princeton University creators'), []);
+});
+
+test('dash follower ranges enforce both bounds and propagate a trailing unit', () => {
+  const records = normalizeRecords([
+    { handle: 'low', followers: 100 }, { handle: 'min', followers: 10000 }, { handle: 'middle', followers: 15000 }, { handle: 'max', followers: 20000 }, { handle: 'high', followers: 30000 }
+  ]);
+  for (const range of ['10k–20k', '10k-20k', '10k—20k', '10,000–20,000', '10-20k']) {
+    assert.deepEqual(searchRecords(records, `Find creators with ${range} followers`).map(record => record.handle), ['@min', '@middle', '@max'], range);
+  }
+});
+
+test('plus follower notation sets an inclusive minimum alongside school filters', () => {
+  const records = normalizeRecords([
+    { handle: 'low', school: 'UCLA', followers: 999 },
+    { handle: 'minimum', school: 'UCLA', followers: 1000 },
+    { handle: 'above', school: 'UCLA', followers: 1500 },
+    { handle: 'other-school', school: 'NYU', followers: 5000 }
+  ]);
+  assert.deepEqual(searchRecords(records, 'Find UCLA creators with 1,000+ followers').map(record => record.handle), ['@minimum', '@above']);
+});
+
+test('unqualified literal follower counts require an exact match', () => {
+  const records = normalizeRecords([
+    { handle: 'below', followers: 1499 }, { handle: 'exact', followers: 1500 }, { handle: 'above', followers: 1501 }
+  ]);
+  assert.deepEqual(searchRecords(records, 'Find creators with 1500 followers').map(record => record.handle), ['@exact']);
+});
+
+test('ordinary to follower ranges enforce inclusive bounds', () => {
+  const records = normalizeRecords([
+    { handle: 'below', followers: 9999 }, { handle: 'minimum', followers: 10000 }, { handle: 'maximum', followers: 20000 }, { handle: 'above', followers: 20001 }
+  ]);
+  assert.deepEqual(searchRecords(records, 'Find creators with 10k to 20k followers').map(record => record.handle), ['@minimum', '@maximum']);
+});

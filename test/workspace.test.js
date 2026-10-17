@@ -1,0 +1,25 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {normalizeWorkspace} from '../public/workspace.js';
+
+const record={id:'one',handle:'safe.creator',hook:'A hook',followers:1500};
+const result={title:'Result',summary:'Summary',sections:[],sources:[record],creators:[]};
+const chat=(r=result)=>({id:'chat',title:'My research',messages:[{role:'assistant',result:r}]});
+test('corrupt nested conversations cannot reach the renderer',()=>{
+  const workspace=normalizeWorkspace({records:[record],conversations:[chat({...result,creators:[null]}),{id:'bad',title:'Bad',messages:[null]}],alerts:[]});
+  assert.deepEqual(workspace.conversations,[]);
+});
+test('valid records are normalized in research results and alerts have iterable seen IDs',()=>{
+  const workspace=normalizeWorkspace({records:[record],conversations:[chat({...result,sources:[{...record,hook:123}]})],alerts:[{id:'alert',query:'study',seen:{not:'iterable'},paused:false}],activeId:'chat'});
+  assert.equal(workspace.conversations[0].messages[0].result.sources[0].hook,'123');
+  assert.deepEqual(workspace.alerts[0].seen,[]);
+  assert.equal(workspace.activeId,'chat');
+});
+test('unsafe links invalidate a stored result and empty active IDs recover to the home screen',()=>{
+  const workspace=normalizeWorkspace({records:[record],conversations:[chat({...result,sources:[{...record,url:'javascript:alert(1)'}]})],activeId:'missing'});
+  assert.deepEqual(workspace.conversations,[]);assert.equal(workspace.activeId,null);
+});
+test('invalid replacement libraries throw without modifying supplied data',()=>{
+  const input={records:[{handle:'bad',url:'javascript:alert(1)'}]};const copy=structuredClone(input);
+  assert.throws(()=>normalizeWorkspace(input),/url/);assert.deepEqual(input,copy);
+});
