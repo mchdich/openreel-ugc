@@ -59,3 +59,9 @@ test('Node client disconnect propagates cancellation to the optional source oper
  try{const response=fetch(`http://127.0.0.1:${server.address().port}/api/videos/analyze`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url,question:'Review'}),signal:controller.signal}).catch(e=>e);await started;controller.abort();await response;let timer;try{await Promise.race([cancelled,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Cancellation did not reach source operation')),1000);})]);}finally{clearTimeout(timer);}}
  finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
 });
+
+test('source cancellation drains normal browser cleanup and quarantines a failed close before another operation',async()=>{
+ let captures=0;const {service,calls}=setup({deadlineMs:1000,capture:async(source,{signal})=>{if(++captures===1)await new Promise(resolve=>signal.addEventListener('abort',()=>setTimeout(resolve,800),{once:true}));return {attachment,visualEvidence:receipt};}});
+ const started=Date.now();await assert.rejects(service({url,question:'Review'}),e=>e.status===504);assert.ok(Date.now()-started>=1750);assert.equal(calls.analyze,0);assert.equal((await service({url,question:'Another explicit source'})).mode,'ai');
+ const failed=setup({capture:async()=>{throw Object.assign(Error('Controlled cleanup failure'),{code:'CAPTURE_CLEANUP_FAILED',captureDiagnostic:{cleanupFailed:true}});}});await assert.rejects(failed.service({url,question:'Review'}),e=>e.code==='CAPTURE_CLEANUP_FAILED');await assert.rejects(failed.service({url,question:'Another source'}),e=>e.status===503);assert.equal(failed.calls.analyze,0);
+});

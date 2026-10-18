@@ -63,7 +63,7 @@ async function main(){
    describe:async(attachment,options)=>{active.phase='description';modelCalls++;return describeVideoFrames(attachment,process.env,options);},
    afterEach:result=>{save(result);active=null;}
   });
-  save(report,new Date().toISOString());console.log(JSON.stringify({attempted:report.observations.length,described:report.deltas.length,modelCalls,stopped:report.stopped,output}));if(report.stopped)process.exitCode=2;if(report.observations.some(o=>o.captureDiagnostic?.cleanupTimedOut)){console.error('Owned browser cleanup did not finish; collector process is exiting after preserving the report.');process.exit(2);}
+  save(report,new Date().toISOString());console.log(JSON.stringify({attempted:report.observations.length,described:report.deltas.length,modelCalls,stopped:report.stopped,output}));if(report.stopped)process.exitCode=2;if(report.observations.some(o=>o.captureDiagnostic?.cleanupTimedOut||o.captureDiagnostic?.cleanupFailed)){console.error('Owned browser cleanup did not finish; collector process is exiting after preserving the report.');process.exit(2);}
  }finally{clearTimeout(watchdog);}
 }
 main().catch(error=>{console.error(error?.code?`${error.code}: ${error.message}`:'Collection setup failed. Check input files, output directory and installed runtime paths.');process.exitCode=1;});

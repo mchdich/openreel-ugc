@@ -51,5 +51,25 @@ test('capture deadline and observed network budget stop the owned browser withou
 test('hanging owned-browser cleanup cannot suppress the original network-limit failure',async()=>{
  let closes=0;const events={},page={setDefaultTimeout(){},on(){},goto:async()=>{events['Network.dataReceived']({encodedDataLength:2048});return new Promise(()=>{});}};
  const chromium={launch:async()=>({newContext:async()=>({newPage:async()=>page,newCDPSession:async()=>({send:async()=>{},on:(name,fn)=>{events[name]=fn;}})}),close:async()=>{closes++;return new Promise(()=>{});}})};
- let timer;try{const result=await Promise.race([call('capturePublicPlayer',chromium,source(0),{timeoutMs:1000,maxBytes:1024}).catch(e=>e),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),2000);})]);assert.ok(result,'Capture must settle despite a stuck close');assert.equal(result.code,'CAPTURE_NETWORK_LIMIT');assert.equal(result.captureDiagnostic.cleanupTimedOut,true);assert.equal(closes,1);}finally{clearTimeout(timer);}
+ let timer;try{const result=await Promise.race([call('capturePublicPlayer',chromium,source(0),{timeoutMs:1000,maxBytes:1024}).catch(e=>e),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),5000);})]);assert.ok(result,'Capture must settle despite a stuck close');assert.equal(result.code,'CAPTURE_NETWORK_LIMIT');assert.equal(result.captureDiagnostic.cleanupTimedOut,true);assert.equal(closes,1);}finally{clearTimeout(timer);}
+});
+
+test('a decoded source is released only after a normally delayed owned Chrome close completes',async()=>{
+ let closed=false,settled=false;
+ const page={setDefaultTimeout(){},on(){},url:()=>`https://www.tiktok.com/player/v1/1000?autoplay=1&muted=1`,goto:async()=>({status:()=>200}),waitForFunction:async()=>{},evaluate:async()=>({links:[{href:url(0)},{href:'https://www.tiktok.com/@visual_0'}],images:[]}),locator:()=>({evaluate:async(fn,time)=>time===undefined?{duration:10,width:720,height:1280}:{timestamp:time,dataUrl:'data:image/jpeg;base64,/9j/2Q=='}})};
+ const chromium={launch:async()=>({newContext:async()=>({newPage:async()=>page,newCDPSession:async()=>({send:async()=>{},on(){}})}),close:async()=>{await new Promise(r=>setTimeout(r,750));closed=true;}})};
+ const pending=call('capturePublicPlayer',chromium,source(0)).then(value=>{settled=true;return value;},error=>{settled=true;throw error;});pending.catch(()=>{});
+ await new Promise(r=>setTimeout(r,550));assert.equal(settled,false,'No early rejection or release while ordinary cleanup is still pending');assert.equal(closed,false);const result=await pending;assert.equal(closed,true);assert.equal(result.attachment.frames.length,8);
+});
+
+test('a failed owned-browser close never releases decoded samples as a successful capture',async()=>{
+ const page={setDefaultTimeout(){},on(){},url:()=>`https://www.tiktok.com/player/v1/1000?autoplay=1&muted=1`,goto:async()=>({status:()=>200}),waitForFunction:async()=>{},evaluate:async()=>({links:[{href:url(0)},{href:'https://www.tiktok.com/@visual_0'}],images:[]}),locator:()=>({evaluate:async(fn,time)=>time===undefined?{duration:10,width:720,height:1280}:{timestamp:time,dataUrl:'data:image/jpeg;base64,/9j/2Q=='}})};
+ const chromium={launch:async()=>({newContext:async()=>({newPage:async()=>page,newCDPSession:async()=>({send:async()=>{},on(){}})}),close:async()=>{throw Error('Controlled close failure');}})};
+ await assert.rejects(call('capturePublicPlayer',chromium,source(0)),e=>e.code==='CAPTURE_CLEANUP_FAILED'&&e.captureDiagnostic.cleanupFailed===true);
+});
+
+test('cancellation while launch is pending waits for the owned late browser to close',async()=>{
+ let closed=false,contexts=0;const c=new AbortController();
+ const chromium={launch:async()=>{await new Promise(r=>setTimeout(r,150));return {newContext:async()=>{contexts++;assert.fail('No page after cancellation');},close:async()=>{await new Promise(r=>setTimeout(r,650));closed=true;}};}};
+ const pending=call('capturePublicPlayer',chromium,source(0),{signal:c.signal}).catch(e=>e);setTimeout(()=>c.abort(),20);const result=await pending;assert.equal(result.code,'CAPTURE_CANCELLED');assert.equal(closed,true,'Cancelled request must account for its late-starting browser');assert.equal(contexts,0);
 });

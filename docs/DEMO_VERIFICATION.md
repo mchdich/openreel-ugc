@@ -1,4 +1,4 @@
-# Local demo verification — 1.13.0
+# Local demo verification — 1.13.1
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text and vision use GPT-5.4 mini; transcription uses whisper-1. No provider responses were substituted in the browser acceptance runs.
 
@@ -12,6 +12,24 @@ The tested research, writing, creator-filter and upload paths work. **Full equiv
 4. Attach a video and ask: **Why did my video only get 200 views? Give me three concrete changes and a stronger opening.** The browser extracts up to eight sampled frames and available audio. The model can suggest edits; it cannot establish why a reported metric occurred. Actual upload and natural-footage results are recorded below.
 5. Choose Live search and ask: **Find coffee creators**. With optional web discovery enabled locally, the final actual flow returned @jameshoffmanncoffee, @morgandrinkscoffee and @ryantagcoffee in 7.1 seconds. Start another Live chat: **Find NYU creators with at least 1,500 followers and public emails**. It returned @lizzie.crane with 3,858 observed followers and a public-bio email in 6.2 seconds. Both discovery/chat endpoints returned HTTP 200, all four table avatars loaded and the latest result survived reload. Coverage is a bounded set of checked profiles, not all TikTok.
 6. Open **Trends → Corpus**. The verified default browse now displays seven recurring formats with real source previews. Open a card to inspect its records, provenance and dates. Click **Detect visual patterns** for specific shared component proposals; the verified actual runs are recorded below. These examples are archival, not emerging trends today.
+
+## Source-critique validation and browser lifecycle (1.13.1)
+
+The final actual local browser run imported [Morgan's October 10 source](https://www.tiktok.com/@morgandrinkscoffee/video/7695057594389384478), clicked **Review video**, then submitted:
+
+> Why did this video only get 200 views? Give three concrete changes and three stronger opening lines, grounded in the visible samples. Do not infer a cause from the reported number.
+
+The critique returned HTTP 200 / AI in **16.285s**, and the follow-up in **8.350s**. Transparent private instrumentation returned the original provider responses unchanged and recorded exactly one completed GPT-5.4-mini request per answer. The owned Chrome close completed in 167ms and was disconnected. The full harness passed same-capture follow-up, source/time citations, receipt/structured-time reload, no stored raw frames or session token, 390px layout and no page errors. Native SQLite checks prove the reviewed row still exactly equals the explicit metadata import made before review; global counts stayed 154,462 real / 4,627 creator identities / 300 provider-observed. All eight receipt hashes match the saved actual source JPEGs inspected during this increment.
+
+This final outcome follows recorded failures, not a clean first pass. One earlier request failed after 8.545s because the 500ms browser-close allowance expired. Later review succeeded in 9.834s but its follow-up failed validation; another run passed 14.989/17.061s, while a subsequent run passed initial review in 17.672s and rejected its follow-up. Actual diagnostics isolated natural camera descriptions, “share attention,” conditional preferences/similes, “cannot tell why,” curly apostrophes, proposed edit durations and explicitly proposed spoken opening text being misclassified as metric/audio observations. An actual reply proposing a spoken hook was not claiming that source speech had been heard. The final prompt clearly labels new opening copy as on-screen text to test. The validator still rejects actual speech observations without a transcript, invented counts, performance promises and unseen observed times. Review-found counter and mixed-claim bypasses were reproduced and fixed.
+
+Cleanup now has a separate bounded three-second allowance, waits for a pending owned launch, distinguishes failed from timed-out close, and releases no capture before successful close. The in-app deadline drains this same cleanup budget before another operation. Unknown/failed cleanup quarantines later source work. The CLI preserves its report and exits for both markers even if a failed Playwright transport remains alive. Meaningful child-process and delayed-close/cancellation tests cover these paths. Capture/access/byte/model limits and no-retry behavior stay unchanged.
+
+A separate purposeful model comparison made real GPT-5.4 calls on two coffee sources and a previously acquired parcel-video sample. The two coffee runs initially rejected both completed replies; the parcel run succeeded after its bounded correction, taking 57.616s. Controlled offline replay of the saved replies, clearly separate from new provider evidence, verified the language fixes. All 24 underlying JPEGs across those three sources were inspected. The stronger model separated the portafilter/pitcher and shaker/powder-container states better, but also called a visibly half-cocoa-covered surface fully covered. Its small sample and higher latency do not justify changing the local demo model; GPT-5.4 mini remains configured. [Official image-input model support](https://developers.openai.com/api/docs/models/gpt-5.4) was checked before this experiment.
+
+The final unedited app answers correctly identify the book, shaker, drink and absent drink in the last frame, but still infer a hand lifting and a long intervening presenter stretch from sparse stills. Those motion/pacing claims are not proved by the samples. This remains a purposeful regression set, not representative natural-video accuracy evidence, and no source audio was acquired. Full parity stays open.
+
+445 Node tests passed, including counter/speech/time negatives, delayed cleanup, late launch cancellation and real CLI process termination. Public CI, exact source/archive hashes and finalized replay outcomes are recorded in the release artifacts outside this repository.
 
 ## In-app public-video review (1.13.0)
 

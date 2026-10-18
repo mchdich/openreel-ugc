@@ -262,3 +262,7 @@ The optional public-player/vision workflow and its actual failures/corrections a
 ## In-app public-source review (1.13.0)
 
 [Actual browser evidence](DEMO_VERIFICATION.md#in-app-public-video-review-1130) now covers an explicit source-details button, fresh player capture, multimodal critique and same-capture follow-up. Two clips returned real analyses; final Ethan timings were 15.757/10.933s. Source receipts and structured section times survive reload while images/session tokens stay ephemeral. Native rows remain equal to pre-review imports. 437 Node tests pass. A real camera-word false rejection was diagnosed and fixed; the actual unedited answer still includes a portafilter/pitcher confusion. This improves the usable visual-analysis flow while preserving full parity and factual-quality gaps.
+
+## Natural source-critique language and owned cleanup (1.13.1)
+
+445 Node tests pass. Actual final browser source review / 200-view follow-up returned HTTP 200 AI in 16.285/8.350s, one original provider reply each, with same-capture citations, reload/mobile and no corpus writes. Earlier cleanup/validation failures remain recorded in DEMO_VERIFICATION.md; controlled replay is labeled separately. The optional capture now drains a bounded three-second owned close including late launch, rejects thrown close, and aligns CLI exit and service quarantine. No source audio or continuous-pacing proof was added. Purposeful model comparisons still show factual errors; existing local vision model remains configured and full parity stays open.
