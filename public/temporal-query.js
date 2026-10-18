@@ -36,7 +36,9 @@ function calendarDate(value, label) {
 /** Extract an explicit dated format-momentum request without removing its research constraints. */
 export function parseTemporalQuery(question, { today = new Date().toISOString().slice(0, 10) } = {}) {
   if (typeof question !== 'string' || !question.trim() || question.length > 6000) throw invalid('Question must contain 1–6000 characters.');
-  if (!FORMAT_TOPIC.test(question) || !comparisonPhrases(question).length) return null;
+  const currentPeriod=/\b(?:this week|today|right now|currently|this month|last \d+ days?)\b/i.test(question);
+  const currentTrend=currentPeriod&&/\b(?:trends?|trending|formats?|patterns?)\b/i.test(question);
+  if (!FORMAT_TOPIC.test(question) || (!comparisonPhrases(question).length&&!currentTrend)) return null;
 
   let query = question.trim();
   let asOf = today;
@@ -54,7 +56,7 @@ export function parseTemporalQuery(question, { today = new Date().toISOString().
   const duration = /\b(?:over\s+(?:the\s+)?(?:last|past)|over|last|past)\s+([^\s?!;]+)\s+(days?|weeks?|months?|years?)\b/gi;
   const windows = [...query.matchAll(duration)];
   if (windows.length > 1) throw invalid('Use one day window for a dated trend comparison.');
-  let windowDays = 7;
+  let windowDays = /\btoday\b/i.test(query)?1:/\bthis month\b/i.test(query)?30:7;
   if (windows.length) {
     const [, amount, unit] = windows[0];
     if (!/^\d+$/.test(amount) || !/^days?$/i.test(unit) || Number(amount) < 1 || Number(amount) > 90) {
@@ -69,6 +71,7 @@ export function parseTemporalQuery(question, { today = new Date().toISOString().
   const postedFrom = start.toISOString().slice(0, 10);
   if (!ISO_DATE.test(postedFrom)) throw invalid('The comparison windows must remain within four-digit calendar years.');
   for (const { start, end } of comparisonPhrases(query)) query = query.slice(0, start) + ' ' + query.slice(end);
+  if(currentTrend)query=query.replace(/\b(?:this week|today|right now|currently|this month|trending)\b/gi,' ');
   query = query.replace(/\s+/g, ' ').trim();
   return { query, asOf, windowDays, postedFrom, postedThrough: asOf };
 }

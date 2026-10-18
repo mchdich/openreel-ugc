@@ -303,3 +303,48 @@ test('operator vision deadline is bounded and passed to the actual provider requ
  try{await withProvider(respond(narrative()),async env=>{await analyzeVideo(attachment(),'Critique this',{...env,OPENREEL_VISION_TIMEOUT_MS:'90000'});});assert.ok(seen.includes(90000));}finally{AbortSignal.timeout=original;}
  for(const value of ['0','9999','180001','NaN','45000.5'])await rejectsCode(()=>analyzeVideo(attachment(),'Critique this',{OPENAI_API_KEY:'provider-test-secret',OPENAI_MODEL:'vision',OPENREEL_VISION_TIMEOUT_MS:value}),'provider-configuration',503);
 });
+
+test('camera views are visual evidence rather than invented view-count claims',async()=>{
+ for(const text of ['Try opening with the closest product view first.','The view becomes a closer crop at 5.5s.','The bottle is visible in the camera view.']){
+  await withProvider(respond(narrative({sections:[{heading:'Visual edit',text,timestamps:[0,5.5]}]})),async env=>{
+   const result=await analyzeVideo(attachment(),'Give a concrete edit',env);
+   assert.ok(result.sections.some(s=>s.text.includes(text)));
+  });
+ }
+ // Actual metric promises retain their separate validation.
+ await withProvider(respond(narrative({summary:'This edit increases views.'})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give a concrete edit',env),'provider-invalid-response',502));
+});
+
+test('a GPT-5 vision request uses reasoning-compatible output controls',async()=>{
+ await withProvider(async(request,response)=>{
+  const chunks=[];for await(const chunk of request)chunks.push(chunk);const body=JSON.parse(Buffer.concat(chunks));
+  if(body.max_tokens!==undefined||body.temperature!==undefined||!(body.max_completion_tokens>0)){response.statusCode=400;response.end('{}');return;}
+  respond(narrative())(request,response);
+ },async env=>{
+  const result=await analyzeVideo(attachment(),'Give a concrete edit',{...env,OPENAI_VISION_MODEL:'gpt-5.4-mini'});
+  assert.equal(result.mode,'ai');
+ });
+});
+test('sampled camera framing at a timestamp is not parsed as a social view count',async()=>{
+ const summary='The package view at 0s is a still state. The room view at 5.5s shows a wider composition.';
+ await withProvider(respond(narrative({summary})),async env=>{
+  const result=await analyzeVideo(attachment(),'Give visual feedback',env);assert.equal(result.summary,summary);
+ });
+ await withProvider(respond(narrative({summary:'The view count is 999999.'})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual feedback',env),'provider-invalid-response',502));
+});
+test('a bare view figure and an unseen visual time cannot use the camera-view exemption',async()=>{
+ for(const summary of ['View at 999999.','The view at 999999 is unverified.','The view at 999999s shows a product.']){
+  await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual feedback',env),'provider-invalid-response',502));
+ }
+});
+test('one invalid vision narrative is corrected within the same deadline',async t=>{
+ let calls=0;const signals=[];const actualTimeout=AbortSignal.timeout;t.mock.method(AbortSignal,'timeout',ms=>{signals.push(ms);return actualTimeout(ms);});
+ await withProvider(async(request,response)=>{
+  const chunks=[];for await(const chunk of request)chunks.push(chunk);const body=JSON.parse(Buffer.concat(chunks));calls++;
+  if(calls===1){respond(narrative({summary:'The clip has 999999 views.'}))(request,response);return;}
+  assert.match(body.messages[0].content,/correct|previous|invalid/i);respond(narrative())(request,response);
+ },async env=>{
+  const result=await analyzeVideo(attachment(),'Give an observation and a proposed edit',env);
+  assert.equal(result.mode,'ai');assert.equal(calls,2);assert.deepEqual(signals,[45000]);
+ });
+});

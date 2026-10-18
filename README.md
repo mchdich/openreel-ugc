@@ -27,6 +27,8 @@ npm run build
 
 The portable Worker entry point is `dist/server/index.js`. Building does not publish it. Node uses filesystem SQLite; the deployed Worker uses a migrated D1 database. They are separate stores; see [CORPUS.md](docs/CORPUS.md).
 
+**Local demo fixes (1.5.1):** citation and writing directions no longer become search terms; hook comparisons keep all matching clips; follow-up briefs retain the topic and filters; creator bios and school evidence reach synthesis; current-week requests enforce dates. OpenAI GPT-5/6 request controls and a bounded vision correction attempt are supported. See [the actual demo test report](docs/DEMO_VERIFICATION.md). An OpenAI key alone does not provide broad TikTok discovery or a current trend index.
+
 ## Research flows
 
 - **Library:** research imported records or the labeled fictional examples. Creator filters combine topic, school/location, follower bounds, counts, public contacts, and email-in-bio requirements. Unknown metrics cannot satisfy numeric filters.

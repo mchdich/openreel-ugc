@@ -3,7 +3,7 @@ export const MAX_RECORDS = 2000;
 const TEXT_FIELDS = ['id', 'handle', 'creatorId', 'caption', 'transcript', 'visualDescription', 'descriptionSource', 'hook', 'format', 'niche', 'location', 'school', 'postedAt', 'url', 'thumbnail', 'email', 'bio', 'authorUrl', 'avatar', 'sourceType', 'fetchedAt'];
 const METRIC_FIELDS = ['followers', 'views', 'likes', 'comments', 'shares'];
 const NUM = '(\\d[\\d,]*(?:\\.\\d+)?\\s*[kmb]?)';
-const stopwords = new Set('a an and are as at be by can could content do does did find for from get give has have how i in is it me my of on only or our please show some tell than that the their them there these they this those to us use using video videos want what when where which who why with you your creator creators influencers influencer follower followers email emails public contact contacts least under over above below between around about approximately minimum maximum more less million thousand number top best also university campus college student students competitor competitors hook hooks analyze analyse analysis working work perform performing performance trends trend format formats patterns viral look looking discover list based niche niches right now most successful across multiple compare comparing comparison repeat repeats repeated recurring trending emerging'.split(' '));
+const stopwords = new Set('a an and are as at be by can could content do does did find for from get give has have how i in is it me my of on only or our please show some tell than that the their them there these they this those to us use using video videos want what when where which who why with you your creator creators influencers influencer follower followers email emails public contact contacts least under over above below between around about approximately minimum maximum more less million thousand number top best also university campus college student students competitor competitors hook hooks analyze analyse analysis working work perform performing performance trends trend format formats patterns viral look looking discover list based niche niches right now most successful include across multiple compare comparing comparison repeat repeats repeated recurring trending emerging'.split(' '));
 const aliases = [
   { values: ['nyu', 'new york university'], field: 'school', canonical: 'nyu' },
   { values: ['ucla', 'university of california los angeles', 'university of california, los angeles'], field: 'school', canonical: 'ucla' },
@@ -117,7 +117,7 @@ function canonical(value, field) {
 }
 
 export function searchPlan(query='', options={}, records=[]) {
-  const text = lower(query);
+  const text = lower(retrievalText(query));
   const filters = { ...options };
   let rest = text;
   const extract = (pattern, handler) => { rest = rest.replace(pattern, (...args) => { handler(args); return ' '; }); };
@@ -183,7 +183,7 @@ export function searchPlan(query='', options={}, records=[]) {
       rest = rest.replace(location[0], niche || phrase);
     } else { filters.location = phrase; rest = rest.replace(location[0], ' '); }
   }
-  const terms = clean(rest).split(/\s+/).filter(word => word.length > 1 && !stopwords.has(word) && !/^\d/.test(word));
+  const terms = clean(rest).split(/\s+/).map(word=>word.replace(/^\.+|\.+$/g,'')).filter(word => word.length > 1 && !stopwords.has(word) && !/^\d/.test(word));
   return { filters, terms };
 }
 
@@ -292,10 +292,20 @@ function statistics(all, matches) {
   };
 }
 
+// Output directions belong to synthesis, not the AND-based source search.
+function retrievalText(question){
+  if(/\b(?:script|transcript)[^:\n]{0,100}:/i.test(question))return String(question);
+  return String(question).replace(/^(?:write|draft|suggest|generate|propose|give me)\s+(?:(?:\d+|one|two|three|four|five|some|new|alternative)\s+)*(?:hooks?|openings?|opening lines?|briefs?|scripts?)\s+(?:for|about)\s+/i,'').replace(/(?:[.!?;]\s*|,?\s+and\s+)(?:cite|suggest|write|draft|propose|generate|(?:give me|include)\s+(?:(?:\d+|one|two|three|four|five|some|the)\s+)?(?:hooks?|openings?|examples?|citations?|source videos?|shot lists?)|turn (?:this|these|it) into)\b[\s\S]*$/i,'').trim();
+}
+export const wantsWriting=message=>/^(?:turn (?:this|these|it) into|make (?:this|these|it|a brief)|(?:write|draft|suggest|give me|generate|propose)\s+(?:(?:\d+|one|two|three|four|five|some|alternative|new|more|a|an)\s+)*(?:hooks?|openings?|opening lines?|scripts?|briefs?|shot lists?))\b/i.test(message);
+const writingFollowup=message=>wantsWriting(message)&&!/\b(?:for|about)\s+(?!(?:this|that|these|those|it|them|the above)\b)[a-z]/i.test(message);
+export const wantsCreatorSearch=query=>/\b(?:creators?|influencers?)\b/i.test(query)&&(!/\b(?:hooks?|openings?|videos?|formats?|patterns?)\b/i.test(query)||/\b(?:find|show|list|discover|get|give(?: me)?)\s+(?:(?!(?:hooks?|openings?|videos?|formats?|patterns?)\b)[\w@,.-]+\s+){0,8}(?:creators?|influencers?)\b/i.test(query));
+
 /** Resolve refinements before retrieval, so result limits cannot erase prior constraints. */
 export function researchQuery(question,history=[]){
   const message = String(question || '').trim();
   const previous = [...history].reverse().find(item => item?.role === 'user' && typeof item.content === 'string' && item.content !== message)?.content;
+  if(previous&&writingFollowup(message))return researchQuery(previous,history.filter(item=>item.content!==previous&&item.content!==message));
   return previous && /^(?:only\b|show (?:me )?only\b|those\b|with public emails\b)/i.test(message) ? researchQuery(previous,history.filter(item=>item.content!==previous&&item.content!==message))+' '+message : message;
 }
 
@@ -328,17 +338,17 @@ export function similarCreators(records,query,reference){
 }
 
 /** Deterministic research is useful without an AI service and never broadens an empty match. */
-export function research(records, question, history = [], {reference}={}) {
+export function research(records, question, history = [], {reference,sourceQuery}={}) {
   const message = String(question || '').trim();
   const previous = [...history].reverse().find(item => item?.role === 'user' && typeof item.content === 'string' && item.content !== message)?.content;
-  const query = researchQuery(message,history);
+  const query = retrievalText(sourceQuery??researchQuery(message,history));
   const wantsBrief = /\bcreative brief|\bshot list\b/i.test(message);
   const kind = /\b(?:underperform|flop|critique|review this|my (?:script|video)|why did)\b|\b(?:transcript|script)\s*:/i.test(query) ? 'critique'
     : wantsBrief ? 'critique' : /\btrends?|trending|patterns?\b/i.test(query) ? 'trends'
-    : /\bcreators?|influencers?\b/i.test(query)||wantsSimilarity(query) ? 'creators' : 'research';
+    : wantsCreatorSearch(query)||wantsSimilarity(query) ? 'creators' : 'research';
   const similarity=kind==='creators'&&(Boolean(reference)||wantsSimilarity(query));
   const similar=similarity&&reference?similarCreators(records,query,reference):[];
-  let sources = similarity?similar.map(match=>match.record):searchRecords(records, wantsBrief && previous ? previous : query, { uniqueCreators: kind === 'creators' });
+  let sources = similarity?similar.map(match=>match.record):searchRecords(records, query, { uniqueCreators: kind === 'creators' });
   const sections = [];
   let title = 'Research from your library';
   let summary = '';
@@ -346,7 +356,7 @@ export function research(records, question, history = [], {reference}={}) {
   if (kind === 'creators') {
     title = 'Creators that match your brief';
     summary = sources.length ? `I found ${sources.length} matching creator${sources.length === 1 ? '' : 's'} in the ${records.length}-video library. Every profile and contact below comes from your records.` : 'No creators in the current library match all of those filters. Try another school, location or follower range, or import more records.';
-    sections.push({ heading: 'How these matches were selected', text: 'School, location, follower range and public email requirements are applied together. Around a follower count means within 20%. Results are unique by handle; contacts appear only when explicitly supplied.' });
+    sections.push({ heading: 'How these matches were selected', text: 'School, location, follower range and public email requirements are applied together. Follower bounds keep their requested inclusivity. Contacts appear only when explicitly supplied; school and location labels retain their public-bio self-description evidence.' });
     if(similarity){
       title='Creators with similar content evidence';
       summary=!reference?'Select a reference creator using “Find similar creators” on a source record, then send this request again. A pronoun alone does not identify a person.':sources.length?`${sources.length} creator${sources.length===1?' shares':'s share'} content terms or formats with ${reference.handle||'Creator '+reference.creatorId}, after every requested filter is applied. Similarity uses supplied text and format labels.`:'No eligible creators share content terms or formats with the selected reference. Broaden the filters or add more relevant evidence.';
