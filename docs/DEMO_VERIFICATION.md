@@ -1,9 +1,17 @@
-# Local demo verification — 1.16.2
+# Local demo verification — 1.16.3
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text uses GPT-5.4 mini, current vision uses GPT-5.4, and opening speech uses gpt-transcribe. Earlier whisper-1 and gpt-4o-transcribe failures remain recorded below. No provider responses were substituted in the browser acceptance runs.
 
-The tested research, writing, creator-filter and upload paths work. **Full equivalence to the original advert is not established.** Web-assisted candidates can now reach outside the seed index, with independently checked official profile facts. Unrestricted discovery, representative coverage and current emerging-trend evidence remain open. The hosted snapshot was updated through 1.16.1 at the matching public commit, retaining its smaller D1 corpus and no provider key; the configured AI results concern the local app.
+The tested research, writing, creator-filter and upload paths work. **Full equivalence to the original advert is not established.** Web-assisted candidates can now reach outside the seed index, with independently checked official profile facts. Unrestricted discovery, representative coverage and current emerging-trend evidence remain open. The hosted snapshot uses matching public source releases, retaining its smaller D1 corpus and no provider key; the configured AI results concern the local app.
 
+
+## Source access and selection recovery (1.16.3)
+
+A fixed-order attempt to fill the 28 already acquired October 5–18 posting-window records found seven existing visual descriptions, one previously known null-geometry source and twenty missing descriptions. The first new source returned an HTTP200 public-player document but an HTTP403 video response. Capture stopped without frames or model calls; the remaining sources were not attempted. No retry, asset fallback, access workaround or current-pattern claim was made. The previous code waited for decoding and returned generic `PLAYER_CAPTURE_FAILED`. It now stops immediately on HTTP 401/403/429 from a media resource or video MIME response, preserving bounded status/host diagnostics. A rejected preview image alone does not block otherwise decoded video.
+
+A separate controlled Chrome/local-app test reproduced another recovery problem: a failed selected public source disabled the source picker without a removal control. That context now offers **Clear** through the existing attachment-removal path. In the passing browser check, a locally intercepted player document 200 / media 403 produced the source error in 0.608s, closed its owned browser, performed no model work and made no external source requests. Clear restored Library and enabled the picker; the attach-file chooser, error reload and 390px layout passed with no page errors. Independent review also confirmed typed drafts survive Clear. This is a controlled regression using a fixture record, not new successful TikTok acquisition or real inference.
+
+Meaningful regressions cover immediate denied-media termination, no paid/later-source work, HTML-denial diagnostics and a nonblocking denied image. Full-parity limits remain: current audiovisual coverage is still 5/19 current and 2/9 prior dated records, and the earlier ordinary video-review validation failure and object/action errors remain open. The external release artifact records final checks, public source, archive and matching deployment.
 
 ## Current source evidence and retrieval boundaries (1.16.2)
 

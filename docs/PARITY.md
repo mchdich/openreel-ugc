@@ -22,6 +22,8 @@ The later [website](https://lightreel.ai/) and [API documentation](https://light
 
 ## Recorded implementation evidence
 
+- **Source access/recovery (1.16.3):** the next fixed-order current-cohort acquisition hit an actual public-player video 403 after a 200 document, before frames or model calls. Further collection stopped. Denied media now terminates promptly; failed selected sources offer Clear, with controlled Chrome/draft/reload/mobile checks. This improves error recovery without closing current coverage or critique-quality gaps.
+
 - **Reviewed current visual evidence (1.16.2):** four additional source descriptions retain matching original capture receipts and observation times. All 44 associated images were directly inspected; unsupported container, control-motion, ingredient-addition and exercise-count claims were corrected before the field-only apply. A full-store protected hash proves all other source facts and corpus counts unchanged. Seven descriptions across five creator identities improve local coverage, but selected current/prior annotation rates of 5/19 and 2/9 do not establish an emerging format. A post returning no playable geometry now yields a clear source limitation before capture/model work.
 
 - **Free creator acquisition:** known public handles yield bounded official embed snapshots locally. Fresh collection contributed 262 records to the hosted seed. Followers/views are observed where available; absent likes/comments/shares remain unknown. Bio emails and conservative school/city labels retain public self-description evidence. Cloud creator acquisition itself failed in the recorded check and is not counted as successful cloud live discovery.

@@ -14,6 +14,8 @@ The starter library is fictional. Free creator collection and deterministic libr
 
 **Current evidence and source errors (1.16.2):** named-clip questions no longer turn evidence instructions into search constraints; inline creator filters remain enforced. A post without playable geometry returns a clear source limitation before capture/model work. Four reviewed source annotations expand local visual coverage; an actual twelve-frame review/follow-up and reload/mobile checks pass, but a separate repeat failed validation and object errors remain.507 Node tests pass. [Actual results and failures](docs/DEMO_VERIFICATION.md#current-source-evidence-and-retrieval-boundaries-1162).
 
+**Source recovery (1.16.3):** denied player media now stops promptly with an actionable source error. **Clear** removes a failed selected source so you can switch research sources or attach a local file. Controlled Chrome tests verify recovery, draft preservation, reload and mobile layout without provider calls. A fresh current-cohort collection stopped at an actual video 403; it did not add evidence or establish current trends. [Measured result](docs/DEMO_VERIFICATION.md#source-access-and-selection-recovery-1163).
+
 ## Run locally
 
 Use **Node.js 24 or newer**. There are zero runtime package dependencies; optional corpus storage uses Node’s built-in SQLite.

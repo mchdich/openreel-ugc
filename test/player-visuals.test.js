@@ -102,3 +102,19 @@ test('optional low-resolution source scan retains baseline frames and rechecks a
   assert.equal(closed,1);
  }
 });
+
+test('denied player video media halts before the decode wait, paid description or another source',async()=>{
+ for(const [status,resourceType,contentType]of [[403,'media','video/mp4'],[401,'media','text/html'],[429,'fetch','video/mp4']]){
+  const events={};let closed=0,inspected=0,decoded=0;const page={setDefaultTimeout(){},on:(name,fn)=>{events[name]=fn;},goto:async()=>{events.response({status:()=>status,request:()=>({resourceType:()=>resourceType}),headers:()=>({'content-type':contentType}),url:()=>`https://media.example.test/source.mp4`});return new Promise(()=>{});},waitForFunction:async()=>{decoded++;assert.fail('No decode wait after denied media');}};
+  const chromium={launch:async()=>({newContext:async()=>({newPage:async()=>page,newCDPSession:async()=>({send:async()=>{},on(){}})}),close:async()=>{closed++;}})};
+  const started=performance.now(),result=await call('collectPlayerVisuals',[url(0),url(1)],{inspect:async()=>{inspected++;return source(0);},capture:s=>call('capturePublicPlayer',chromium,s,{timeoutMs:1000}),describe:async()=>assert.fail('No paid work after denied media')});
+  assert.equal(result.stopped.code,'PLAYER_HTTP_BARRIER');assert.ok(performance.now()-started<500,'Known denial must not wait for a capture/decode timeout');assert.equal(inspected,1);assert.equal(decoded,0);assert.equal(closed,1);assert.equal(result.deltas.length,0);assert.deepEqual(result.notAttempted,[url(1)]);
+  assert.deepEqual(result.observations[0].captureDiagnostic.mediaResponses,[{host:'media.example.test',status}]);
+ }
+});
+
+test('a denied preview image does not block otherwise decoded video samples',async()=>{
+ const events={};let closed=0;const page={setDefaultTimeout(){},on:(name,fn)=>{events[name]=fn;},url:()=>`https://www.tiktok.com/player/v1/1000?autoplay=1&muted=1`,goto:async()=>{events.response({status:()=>403,request:()=>({resourceType:()=> 'image'}),headers:()=>({'content-type':'image/jpeg'}),url:()=> 'https://images.example.test/missing.jpg'});return {status:()=>200};},waitForFunction:async()=>{},evaluate:async()=>({links:[{href:url(0)},{href:'https://www.tiktok.com/@visual_0'}],images:[]}),locator:()=>({evaluate:async(_fn,time)=>time===undefined?{duration:10,width:720,height:1280}:{timestamp:time,dataUrl:'data:image/jpeg;base64,/9j/2Q=='}})};
+ const chromium={launch:async()=>({newContext:async()=>({newPage:async()=>page,newCDPSession:async()=>({send:async()=>{},on(){}})}),close:async()=>{closed++;}})};
+ const result=await call('capturePublicPlayer',chromium,source(0));assert.equal(result.attachment.frames.length,8);assert.equal(closed,1);
+});
