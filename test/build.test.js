@@ -33,7 +33,7 @@ test('portable Worker binds its hosted corpus through D1 without runtime schema 
   const {DatabaseSync}=await import('node:sqlite');const db=new DatabaseSync(':memory:');
   db.exec(await readFile(new URL('../drizzle/0000_corpus.sql',import.meta.url),'utf8'));
   let writes=0;
-  const binding={prepare(sql){assert.doesNotMatch(sql,/CREATE|ALTER|DROP/i);if(/^\s*(?:INSERT|UPDATE|DELETE)/i.test(sql))writes++;return {bind(...parameters){return {all:async()=>({success:true,results:db.prepare(sql).all(...parameters)})};},all:async()=>({success:true,results:db.prepare(sql).all()})};},batch:async statements=>Promise.all(statements.map(s=>s.all()))};
+  const binding={prepare(sql){assert.doesNotMatch(sql,/CREATE|ALTER|DROP/i);if(/^\s*(?:INSERT|UPDATE|DELETE)/i.test(sql))writes++;return {bind(...parameters){return {all:async()=>({success:true,results:db.prepare(sql).all(...parameters)}),first:async()=>db.prepare(sql).get(...parameters)||null};},all:async()=>({success:true,results:db.prepare(sql).all()})};},batch:async statements=>Promise.all(statements.map(s=>s.all()))};
   try{
     const {default:worker}=await import(new URL('../dist/server/index.js',import.meta.url));
     const response=await worker.fetch(new Request('https://d1-build.example/api/status'),{DB:binding});assert.equal((await response.json()).corpusAvailable,true);
@@ -62,5 +62,17 @@ test('portable Worker binds its hosted corpus through D1 without runtime schema 
       const result=await worker.fetch(new Request('https://d1-build.example/api/corpus/visual-patterns',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer owner-test-token'},body:JSON.stringify({query:'split screen'})}),{DB:binding,OPENAI_API_KEY:'provider-test-secret',OPENAI_MODEL:'gpt-5.4-mini',OPENREEL_API_TOKEN:'owner-test-token'});
       assert.equal(result.status,200);const body=await result.json();assert.equal(body.patterns.length,1);assert.equal(body.modelCalls,2);assert.equal(calls,2);assert.equal(writes,beforeDetection);
     }finally{globalThis.fetch=initialFetch;}
+    const postFetch=globalThis.fetch;let postChecks=0;
+    try{
+      globalThis.fetch=async(url)=>{
+        if(url==='https://www.tiktok.com/embed/@metabuild')return new Response('<script id="__FRONTITY_CONNECT_STATE__">'+JSON.stringify({source:{data:{'/embed/@metabuild':{isReady:true,isError:false,userInfo:{id:'11000',uniqueId:'metabuild',code:200,privateAccount:false,signature:'Tea creator',followerCount:1200},videoList:Array.from({length:8},(_,i)=>({id:String(11001+i),desc:'Tea fixture',privateItem:false,authorUniqueId:'metabuild',playCount:20}))}}}})+'</script>',{headers:{'content-type':'text/html'}});
+        assert.match(url,/^https:\/\/www\.tiktok\.com\/@metabuild\/video\/1100[3-8]$/);postChecks++;const id=url.split('/').at(-1);
+        return new Response('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({__DEFAULT_SCOPE__:{'webapp.video-detail':{statusCode:0,itemInfo:{itemStruct:{id,privateItem:false,createTime:'1728000000',desc:'Tea fixture',author:{id:'11000',uniqueId:'metabuild',privateAccount:false,signature:'Tea creator'},authorStats:{followerCount:999},stats:{playCount:0}}}}}})+'</script>',{headers:{'content-type':'text/html'}});
+      };
+      const result=await worker.fetch(new Request('https://d1-build.example/api/videos/creator',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({handle:'metabuild'})}),{DB:binding,OPENREEL_POST_METADATA:'true'});
+      assert.equal(result.status,200);const body=await result.json();assert.equal(body.records.length,8);assert.equal(body.postMetadata.dated,6);assert.equal(postChecks,6);assert.ok(body.records.every(r=>r.followers===999));
+      for(const record of body.records){const saved=JSON.parse(db.prepare('SELECT record_json FROM corpus_videos WHERE id=?').get(record.id).record_json);assert.equal(saved.postedAt,record.postedAt);assert.equal(saved.sourceType,record.sourceType);assert.equal(saved.followers,999);}
+      assert.equal(body.records.filter(r=>r.sourceType==='tiktok-public-profile-and-post'&&!r.postedAt).length,2);
+    }finally{globalThis.fetch=postFetch;}
   }finally{db.close();}
 });

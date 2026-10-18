@@ -118,7 +118,10 @@ test('browser retains its default deadline and allows a configured local chat to
     [{providerConfigured:true,chatRequestTimeoutMs:25000},'live',65000],
     [{providerConfigured:true,chatRequestTimeoutMs:90000},'library',95000],
     [{providerConfigured:true,chatRequestTimeoutMs:180000},'corpus',185000],
-    [{providerConfigured:true,chatRequestTimeoutMs:180000},'live',220000]
+    [{providerConfigured:true,chatRequestTimeoutMs:180000},'live',220000],
+    [{providerConfigured:true,chatRequestTimeoutMs:25000,postMetadataConfigured:true},'live',85000],
+    [{providerConfigured:true,chatRequestTimeoutMs:180000,postMetadataConfigured:true},'live',240000],
+    [{providerConfigured:true,chatRequestTimeoutMs:25000,postMetadataConfigured:'true'},'live',65000]
   ]){
     const {timers,requests}=await browserSubmission(status,{source});
     assert.equal(timers[0].delay,want);

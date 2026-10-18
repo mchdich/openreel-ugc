@@ -56,6 +56,25 @@ function playerMetadataEvidence(evidence, record, index) {
   return {sourceType: evidence.sourceType, sourceUrl: evidence.sourceUrl, observedAt: evidence.observedAt, postId: evidence.postId, fields: [...evidence.fields]};
 }
 
+function postingDateEvidence(value,record){
+  const invalid=()=>new Error('Invalid posting-date evidence.');
+  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==4||value.sourceType!=='tiktok-public-post'||record.demo!==false)throw invalid();
+  for(const field of ['url','observedAt','postedAt'])if(typeof value[field]!=='string'||value[field].length>2000)throw invalid();
+  let source;try{source=new URL(value.url);}catch{throw invalid();}
+  const id=source.pathname.match(/^\/@[a-z0-9_][a-z0-9_.]{0,79}\/video\/(\d{1,30})$/i)?.[1];
+  if(source.protocol!=='https:'||source.hostname!=='www.tiktok.com'||source.username||source.password||source.port||source.search||source.hash||source.href!==value.url||!id||record.id!==`tiktok-${id}`||value.postedAt!==record.postedAt)throw invalid();
+  for(const field of ['observedAt','postedAt'])if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value[field])||!Number.isFinite(Date.parse(value[field]))||new Date(value[field]).toISOString()!==value[field])throw invalid();
+  if(Date.parse(value.postedAt)<946684800000||Date.parse(value.postedAt)>Date.parse(value.observedAt)+300000)throw invalid();
+  return {sourceType:value.sourceType,url:value.url,observedAt:value.observedAt,postedAt:value.postedAt};
+}
+
+/** Creation time is immutable; retain its original evidence, never old analytics. */
+export function retainPostingDate(previous,current){
+  if(!previous||!current||previous.demo!==false||current.demo!==false||previous.synthetic||current.synthetic||previous.id!==current.id||current.postedAt||previous.creatorId&&current.creatorId&&previous.creatorId!==current.creatorId)return current;
+  let evidence;try{evidence=postingDateEvidence(previous.postingEvidence||(previous.sourceType==='tiktok-public-post'?{sourceType:previous.sourceType,url:previous.url,observedAt:previous.fetchedAt,postedAt:previous.postedAt}:null),previous);}catch{return current;}
+  return {...current,postedAt:evidence.postedAt,postingEvidence:evidence};
+}
+
 /** Rejects a whole import on any malformed row; never mutates the original input. */
 export function normalizeRecords(input) {
   if (!Array.isArray(input) || input.length === 0 || input.length > MAX_RECORDS) throw new Error(`Import must contain 1–${MAX_RECORDS} records.`);
@@ -88,6 +107,7 @@ export function normalizeRecords(input) {
     if (result.email && !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(result.email)) throw new Error(`Record ${index + 1} has an invalid email.`);
     if (result.postedAt && !Number.isFinite(Date.parse(result.postedAt))) throw new Error(`Record ${index + 1} has an invalid postedAt date.`);
     result.demo = row.demo === true || row.demo === 'true';
+    if(row.postingEvidence!==undefined)result.postingEvidence=postingDateEvidence(row.postingEvidence,result);
     if(row.profileEvidence!==undefined){
       const evidence=row.profileEvidence;
       if(!evidence||typeof evidence!=='object'||Array.isArray(evidence)||typeof evidence.url!=='string'||typeof evidence.fetchedAt!=='string'||!Number.isFinite(Date.parse(evidence.fetchedAt)))throw new Error(`Record ${index+1} has invalid profile evidence.`);

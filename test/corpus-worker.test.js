@@ -134,3 +134,13 @@ test('D1 posting calendar filters preserve the same bounded subset before pagina
   for(const options of [{postedFrom:'2024-02-30'},{postedThrough:'2024-7-21'},{postedFrom:'2024-07-22',postedThrough:'2024-07-21'}])await assert.rejects(()=>corpus.search('',options),/posting|calendar|date/i);
  }finally{binding.close();local.close();}
 });
+
+test('bounded multi-ID reads match Node provenance in one hosted query and never write',async()=>{
+ const {binding,corpus}=open(),local=openCorpus(':memory:');try{
+  const records=[row({id:'batch-a'}),row({id:'batch-b',handle:'@other',url:'https://www.tiktok.com/@other/video/124'})];
+  await corpus.upsert(records,{kind:'real',source:'controlled multi-ID regression'});local.upsert(records,{kind:'real',source:'controlled multi-ID regression'});
+  assert.equal(typeof corpus.getMany,'function');assert.equal(typeof local.getMany,'function');
+  const before=binding.calls.length;const ids=['batch-b','missing','batch-a','batch-b'];const remote=await corpus.getMany(ids),native=local.getMany(ids);assert.deepEqual(remote.map(r=>[r.id,r.corpusKind,r.corpusVerification]),native.map(r=>[r.id,r.corpusKind,r.corpusVerification]));assert.equal(remote.length,2);assert.equal(binding.calls.length,before+1);assert.match(binding.calls.at(-1),/^SELECT/);assert.deepEqual(await corpus.getMany([]),[]);assert.equal(binding.calls.length,before+1);
+  for(const invalid of [null,[''],[1],Array(41).fill('batch-a')]){assert.throws(()=>local.getMany(invalid));await assert.rejects(corpus.getMany(invalid));}
+ }finally{local.close();binding.close();}
+});

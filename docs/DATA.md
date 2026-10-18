@@ -4,11 +4,11 @@ OpenReel keeps captions, profile bios, scripts/transcripts, measured metrics and
 
 ## Sources and storage
 
-The browser library accepts up to **2,000 records**. Optional [SQLite corpus storage](CORPUS.md) indexes iterable imports beyond that limit. Corpus research retrieves a bounded subset; global corpus totals are reported separately from the records examined in an answer. Node 24 is required. Node’s filesystem SQLite backend is unavailable in the portable Worker; a separate hosted backend is not yet verified.
+The browser library accepts up to **2,000 records**. Optional [SQLite corpus storage](CORPUS.md) indexes iterable imports beyond that limit. Corpus research retrieves a bounded subset; global corpus totals are reported separately from the records examined in an answer. Node 24 is required. Node’s filesystem SQLite backend is unavailable in the portable Worker; the separately verified hosted D1 corpus has 4,424 records. The configured local corpus and hosted store remain separate.
 
-Acquisition paths are JSON/CSV imports, official direct-video oEmbed metadata, free official creator embeds for known handles, and optional configured Apify keyword discovery. Public creator collection provides currently exposed videos and profile snapshots; it does not discover every creator or retrieve complete histories. No source-video download or URL transcription is performed.
+Acquisition paths are JSON/CSV imports, official direct-video oEmbed metadata, free official creator embeds, optional canonical public-post metadata, web-assisted handle proposals with independent profile verification, and configured Apify keyword discovery. Public creator collection provides currently exposed videos and profile snapshots; it does not discover every creator or retrieve complete histories. No source-video download or URL transcription is performed.
 
-Implementation evidence includes **10 provider-observed real videos from one creator** in a local database. A separate **150,000-row synthetic benchmark contains zero real records**. Neither is the required independently acquired 150,000+ real-video corpus with transcript/visual evidence.
+The normal local corpus contains **154,452 real records across 4,627 creator identities**, including 290 provider-observed records. The optional 150,000-record research archive supplies upstream transcripts/visual descriptions under its separate CC-BY-NC license. A separate synthetic capacity benchmark supplies no real evidence. See [CORPUS.md](CORPUS.md) and [RESEARCH_DATA.md](RESEARCH_DATA.md) for exact sources and limits.
 
 ## Import JSON or CSV
 
@@ -44,7 +44,7 @@ This example is fictional. Quote CSV values containing commas/newlines/quotes; d
 
 | Field | Meaning |
 | --- | --- |
-| `handle` | Required identifier, optionally prefixed `@`; normalized to include it. |
+| `handle`, `creatorId` | At least one is required. Actual handles normalize with `@`; numeric creator IDs preserve identity when the username is unknown. |
 | `id` | Optional stable record ID; duplicate IDs reject a browser import. TikTok adapters use `tiktok-<video-id>`. |
 | `caption`, `hook` | Post description and a separately supplied opening/hook. Captions do not become spoken hooks automatically. |
 | `transcript` | Supplied or explicitly acquired text; provenance/accuracy must be assessed separately. |
@@ -55,8 +55,9 @@ This example is fictional. Quote CSV values containing commas/newlines/quotes; d
 | `unavailableMetrics` | Array naming unknown metric fields, even when their numeric placeholder is zero. |
 | `email` | Optional valid public contact. Creator adapters extract it only from the public bio. |
 | `postedAt` | Supplied posting date, normally ISO; retrieval time is separate. |
+| `postingEvidence` | Optional exact primary date citation: `sourceType: tiktok-public-post`, canonical `url`, UTC `observedAt` and matching UTC `postedAt`. Source ID/date/shape/range are validated. A supplied citation does not confer provider verification. |
 | `url`, `thumbnail`, `authorUrl`, `avatar` | Absolute HTTP(S) links without credentials; adapters apply stricter source allowlists. |
-| `sourceType`, `fetchedAt` | Source label and retrieval timestamp; adapters use `tiktok-oembed`, `tiktok-creator-embed` or `apify`. |
+| `sourceType`, `fetchedAt` | Source label and retrieval timestamp; adapters use `tiktok-oembed`, `tiktok-creator-embed`, `tiktok-public-post`, mixed `tiktok-public-profile-and-post`, or `apify`. |
 | `profileEvidence` | Public profile citation/timestamp and optional school/location self-description claims. |
 | `demo` | Fictional marker, enabled by boolean `true` or CSV `true`. |
 

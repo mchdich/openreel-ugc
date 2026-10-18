@@ -1,4 +1,4 @@
-# Local demo verification — 1.9.0
+# Local demo verification — 1.10.0
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text and vision use GPT-5.4 mini; transcription uses whisper-1. No provider responses were substituted in the browser acceptance runs.
 
@@ -12,6 +12,26 @@ The tested research, writing, creator-filter and upload paths work. **Full equiv
 4. Attach a video and ask: **Why did my video only get 200 views? Give me three concrete changes and a stronger opening.** The browser extracts up to eight sampled frames and available audio. The model can suggest edits; it cannot establish why a reported metric occurred. Actual upload and natural-footage results are recorded below.
 5. Choose Live search and ask: **Find coffee creators**. With optional web discovery enabled locally, the final actual flow returned @jameshoffmanncoffee, @morgandrinkscoffee and @ryantagcoffee in 7.1 seconds. Start another Live chat: **Find NYU creators with at least 1,500 followers and public emails**. It returned @lizzie.crane with 3,858 observed followers and a public-bio email in 6.2 seconds. Both discovery/chat endpoints returned HTTP 200, all four table avatars loaded and the latest result survived reload. Coverage is a bounded set of checked profiles, not all TikTok.
 6. Open **Trends → Corpus**. The verified default browse now displays seven recurring formats with real source previews. Open a card to inspect its records, provenance and dates. Click **Detect visual patterns** for specific shared component proposals; the verified actual runs are recorded below. These examples are archival, not emerging trends today.
+
+## Dated Live acquisition and continuity (1.10.0)
+
+With `OPENREEL_POST_METADATA=true`, the actual browser **Collect creator** action acquired ten @ryantagcoffee records and inspected six public post pages in **1.856 seconds**. All six supplied real UTC posting dates; twenty available cover/avatar images loaded. The record modal displayed the exact posting date and original Date source link. Library's current-week comparison examined six dated records: one in October 12–18, two in October 5–11 and three earlier. No repeated multi-creator format qualified, so no emerging claim appeared.
+
+The actual **What coffee formats are trending this week?** Live flow returned HTTP 200 in **8.620 seconds**. It checked six selected public pages, then returned fifteen matching records after topic/limit filtering; four retained dates, with three current-week posts from distinct creators: @ryantagcoffee (October 13), @morgandrinkscoffee (October 14) and @ethanrodecoffee (October 17). The fourth dated source, @jameshoffmanncoffee, was September 24. The comparison correctly reported three current-window records, zero prior-window records and no qualifying format/momentum group. Six inspected dates are a metadata-stage count, not fifteen dated returned sources. This is fresh multi-creator metadata, not verified emerging audiovisual behavior or representative TikTok coverage.
+
+The compound Live request **Find NYU creators with at least 1500 followers and public emails** returned HTTP 200 in **8.576 seconds**, with six page checks and one matching creator. @lizzie.crane's returned post was dated **2026-10-14T04:28:50.000Z**. Its follower/contact/school constraints were reapplied to actual public profile observations; NYU remains a public bio self-description, not verified enrollment. Both browser flows had no response substitutes, page errors or 390px overflow, and the final answer survived reload.
+
+The first actual topic repeat encountered one failed public-profile check and therefore skipped post metadata; it retained confirmed embed records with a visible partial notice. That run exposed a separate bug: a date-less embed snapshot erased six already observed posting dates. The corrected shared merge carries only a validated primary date and its original `postingEvidence` URL/observation timestamp. Old views, contacts and followers are not retained. Later successful page reads may replace the observation timestamp with a fresh actual observation. A final native read matched all six original dates and the latest actual response's evidence/counts/source type. The full-date input, failing before-state and successful repeat remain separate in local QA.
+
+Selection is bounded to six explicit source IDs across confirmed creators, with three concurrent GETs, one 20-second shared deadline and existing 10-second / 1 MiB page bounds. Numeric-ID order is a selection heuristic and never supplies a date. A failed metadata batch stops later batches; a failed profile batch suppresses metadata calls. No retry, oEmbed fallback, source-video download or extra AI call occurs. The latest fetched profile observation per numeric creator identity is attributed across that creator's returned records; it does not prove cache freshness. Uninspected videos keep their original video fields and mixed-source labels. Renames keep all canonical source URLs consistent. Temporal wording is removed only from acquisition topic matching; the original question reaches comparison. Video/format research across creators retains multiple clips per creator.
+
+Posting evidence is strictly bound to the exact post ID, canonical public source, matching UTC creation time and observation timestamp (including the reader's five-minute clock-skew allowance). The API reuses prior date evidence only from real/provider-observed persisted records. Supplied citation objects cannot grant that classification. A single bulk native/D1 read supports continuity without one query per result. Library merge, source provenance and date evidence survive save/reload; details expose the primary date citation. Explicit generic whole-record imports remain replacements.
+
+A separate actual browser refresh temporarily disabled post inspection on an owned local test server while retaining the same corpus. The real creator-embed response returned HTTP 200 in **773 ms**. All six overlapping records kept exactly the earlier posting dates and original date citations, while their retrieval/profile observations and available analytics came from the fresh embed response. The browser modal displayed the retained date/source. Native persistence checks confirmed the same values. No post page or AI request supplied a replacement date in that run. The test server was stopped; the primary demo keeps post inspection enabled.
+
+Across these actual acquisitions, the local corpus grew from 154,430 records / 4,626 identities / 268 provider-observed records to **154,452 / 4,627 / 290**, with zero example/synthetic/unverified rows. These are 22 new records and one creator identity, not every profile or page that was checked. The hosted 1.5.0 snapshot and all cloud credentials remain unchanged.
+
+After restarting the primary app with the final source, the actual core browser repeat returned cooking-hook synthesis from 243 records in **5.256 seconds**, a source-preserving brief follow-up in **6.491 seconds**, and two UCLA/follower/public-email matches in **2.144 seconds**. The current-week cooking comparison correctly returned no dated sources. All four requests returned HTTP 200 with no page errors; these measured runs do not guarantee latency or universal coverage.
 
 ## Dated public-post metadata (1.9.0)
 
@@ -103,7 +123,7 @@ The final speech-bearing upload repeat returned HTTP 200 for transcription, crit
 
 ## Final checks
 
-- Node: 373 tests passed, zero failures, including web discovery, relevance/compound filters, error boundaries, format coverage, selection provenance and generated Worker/D1 retrieval.
+- Node: 397 tests passed, zero failures, including web discovery, relevance/compound filters, error boundaries, format coverage, selection provenance and generated Worker/D1 retrieval.
 - Python: 17 passed, one optional test skipped.
 - Portable Worker build completed; publication of this revision to Sites was not requested.
 - The complete browser upload test returned HTTP 200 for transcription and both vision turns. Its first answer arrived about 20.2 seconds after file attachment started.
