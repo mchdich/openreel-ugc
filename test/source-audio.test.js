@@ -25,6 +25,11 @@ test('source opening speech is transcribed once before vision and reused without
  await service({sessionId:first.sourceSessionId,question:'Propose another hook'});assert.deepEqual(calls,['transcribe','analyze','analyze']);
 });
 
+test('invalid vision reasoning configuration cannot begin source acquisition or paid speech work',async()=>{
+ const calls=[];const service=createSourceVideoService({...env,OPENAI_VISION_REASONING_EFFORT:'fast'},{inspect:async()=>{calls.push('inspect');return {record};},capture:async()=>{calls.push('capture');return {attachment,visualEvidence:evidence,audioCapture:{status:'available',capture,chunk}};},transcribe:async()=>{calls.push('transcribe');return {text:'Controlled words',duration:.1,provider:'machine-transcription'};},analyze:async()=>{calls.push('analyze');return structuredClone(result);}});
+ await assert.rejects(service({url,question:'Review'}),error=>error.code==='provider-configuration'&&error.status===503);assert.deepEqual(calls,[]);
+});
+
 test('forged source-audio receipt or PCM hash is rejected before transcription and vision',async()=>{
  for(const bad of [{...capture,sha256:'b'.repeat(64)},{...capture,creatorId:'9999'},{...capture,duration:.2},{...capture,sourceUrl:url.replace('1000','1001')}]){
   let transcriptions=0,analyses=0;const service=createSourceVideoService(env,{inspect:async()=>({record}),capture:async()=>({attachment,visualEvidence:evidence,audioCapture:{status:'available',capture:bad,chunk}}),transcribe:async()=>{transcriptions++;return {text:'Controlled'};},analyze:async()=>{analyses++;return structuredClone(result);}});await assert.rejects(service({url,question:'Review'}),error=>error.code==='SOURCE_AUDIO_RECEIPT'&&error.status===502);assert.equal(transcriptions,0);assert.equal(analyses,0);

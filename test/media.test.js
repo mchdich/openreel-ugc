@@ -445,3 +445,45 @@ test('proposed camera acquisition preserves comparative composition without auth
  for(const summary of ['Try getting more complete product views of the cup.','Consider getting more varied views of the grinder.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
  for(const summary of ['Try getting 999999 complete product views of the cup.','Consider getting more sponsored views of the grinder.','Try getting more complete product views of the cup and this edit will double views.','The post received more varied views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual edit tests',env),'provider-invalid-response',502));
 });
+
+test('singular comparison-like language is distinct from the social like noun',async()=>{
+ for(const summary of ['New copy to test: "Can this home machine make a cup like this?"','The drink looks like a creamy dessert.','New copy to test: "A cup like velvet."'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
+ for(const summary of ['You reported 999999 like.','This edit will double likes.','This edit will improve the like count.','This opener will get a like.','The like rate is high.','This opener guarantees your next like.','This edit will earn its first like.','The like is guaranteed.','This opener guarantees an organic like.','An excellent new like is guaranteed.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual edit tests',env),'provider-invalid-response',502));
+});
+
+test('negative show and reveal statements preserve cause limitations',async()=>{
+ for(const summary of ['The sampled stills do not show why the view count happened.','The frames cannot reveal the cause of low views.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Why 200 views?',env)).mode,'ai'));
+ for(const summary of ['The sampled stills do not show why the view count happened but this edit will double views.','The frames cannot reveal the cause of low views and the views will be high.','The stills do not show why the reported 999999 views occurred.','The frames do not hide why this edit will double views.','Do not question why this edit will double views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Why 200 views?',env),'provider-invalid-response',502));
+});
+
+test('explicit metadata duration may be rounded without authorizing an unseen observation time',async()=>{
+ const video=attachment({duration:175.966667});
+ for(const summary of ['The user-supplied duration is 175.97s.','The video is 176 seconds long.','The clip lasts 175.967s.','The supplied duration is 175.97s, but only the sampled frames are visible.','The clip lasts 175.966667s, but only the supplied frames are visible.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(video,'Give visual edit tests',env)).mode,'ai'));
+ for(const summary of ['The user-supplied duration is 175.96s.','At 175.97s the cup appears.','The video is 176 seconds long and the cup appears at 176s.','At 175.97s the cup appears in the video, whose duration is 175.97s.','The cup appears at the clip duration of 175.97s.','At duration 175.97s the cup appears.','At the clip duration of 175.97s there is a cup.','At the full duration of 175.97s, there is a cup.','The cup is shown at a total duration of 175.97s.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(video,'Give visual edit tests',env),'provider-invalid-response',502));
+});
+
+test('a negative unproven-cause noun phrase does not become a social performance claim',async()=>{
+ await withProvider(respond(narrative({summary:'This is an experiment to test, not a proven reason for the view count.'})),async env=>assert.equal((await analyzeVideo(attachment(),'Why 200 views?',env)).mode,'ai'));
+ for(const summary of ['This is not a proven reason for the view count but this edit will double views.','This is not a proven reason for the reported 999999 views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Why 200 views?',env),'provider-invalid-response',502));
+});
+
+test('missing transcript/audio and unconfirmed spoken words remain narrow evidence limitations',async()=>{
+ for(const summary of ['Since no transcript or audio is supplied, these are visible words, not confirmed spoken words.','No transcript or speech was provided; this is visible text, not verified speech.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Review visible opening words',env)).mode,'ai'));
+ for(const summary of ['No transcript or audio is supplied, but the music is great.','These are not confirmed spoken words, but the voice sounds clear.','No transcript or audio is supplied and the narrator speaks quickly.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Review visible opening words',env),'provider-invalid-response',502));
+});
+
+test('explicit vision reasoning effort reaches reasoning models while legacy request controls stay unchanged',async()=>{
+ for(const [model,configured,expected]of [['gpt-5.4',undefined,'medium'],['gpt-5.4','low','low'],['gpt-5.4','high','high'],['local-vision','low',undefined]]){
+  let body;await withProvider(async(request,response)=>{const chunks=[];for await(const chunk of request)chunks.push(chunk);body=JSON.parse(Buffer.concat(chunks));respond(narrative())(request,response);},async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edits',{...env,OPENAI_VISION_MODEL:model,...(configured===undefined?{}:{OPENAI_VISION_REASONING_EFFORT:configured})})).mode,'ai'));
+  assert.equal(body.reasoning_effort,expected);if(model==='local-vision'){assert.equal(body.max_tokens,6000);assert.equal(body.temperature,.2);}else assert.equal(body.max_tokens,undefined);
+ }
+});
+
+test('invalid vision reasoning effort is rejected before a provider request',async()=>{
+ let calls=0;await withProvider((request,response)=>{calls++;respond(narrative())(request,response);},async env=>{for(const effort of ['',null,0,'fast',' low ','LOW'])await rejectsCode(()=>analyzeVideo(attachment(),'Give visual edits',{...env,OPENAI_VISION_REASONING_EFFORT:effort}),'provider-configuration',503);});assert.equal(calls,0);
+});
+
+test('list markers preserve explicit proposed edit durations without permitting unseen observations',async()=>{
+ for(const summary of ['1) Test a cold open for about 0.3 to 0.7 seconds, then cut back.','- Try a 2 second opening.','• Consider a 2 second title card.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
+ for(const summary of ['1) At 0.7 seconds the cup appears.','1) Test a different opening. The cup appears at 0.7 seconds.','1) Try a 2 second opening and this edit will double views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual edit tests',env),'provider-invalid-response',502));
+});

@@ -41,6 +41,8 @@ The portable Worker entry point is `dist/server/index.js`. Building does not pub
 
 **Dated public-post imports (1.9.0):** opt in with `OPENREEL_POST_METADATA=true` to import an actual posting timestamp and available engagement counts from one ordinary canonical public TikTok page. The real browser import returned a matching public post in 0.85 seconds, loaded its cover/avatar and survived reload. Default configuration retains official oEmbed. No raw video, transcript or visual description is acquired; missing dates/counts stay unknown. This supplies dated records without establishing current trend coverage.
 
+**Direct vision quality (1.14.1):** fixes valid comparison, cause-limitation and rounded-duration responses being rejected, while preserving numeric/source-time checks. The configured local demo now uses GPT-5.4 vision after actual source comparisons and built-app tests; the experimental extra frame-description stage was not shipped. Natural-video interpretation still has documented limits. [Actual outcomes](docs/DEMO_VERIFICATION.md#direct-vision-quality-and-natural-response-validation-1141).
+
 **Public-source opening speech (1.14.0):** optional `OPENREEL_SOURCE_AUDIO=true` adds up to 30 seconds of actual ordinary-player audio to **Review video**. One transcription supplies unverified opening words to the vision critique; immediate follow-ups reuse the same frames and transcript. Saved answers retain the source interval and transcript, with no WAVs, JPEGs or session token. Later audio, exact word timing and raw acoustics remain unverified. [Configuration and scope](docs/CORPUS.md#in-app-public-source-review) · [actual verification](docs/DEMO_VERIFICATION.md#public-source-opening-speech-1140).
 
 **Source-critique reliability (1.13.1):** fixes ordinary visual/script language rejected as metrics or heard speech, scopes limitations so they cannot excuse performance guarantees, and waits for bounded owned-browser cleanup. The final actual source review and “200 views” follow-up returned AI results in 16.285s and 8.350s, one provider call each; reload, citations and mobile checks passed. Natural-video factual/continuous interpretation remains imperfect. [Actual outcomes and failures](docs/DEMO_VERIFICATION.md#source-critique-validation-and-browser-lifecycle-1131).
@@ -113,6 +115,7 @@ Missing or invalid providers produce explicit errors, with no simulated audiovis
 | `OPENAI_MODEL` | Text model; text synthesis defaults to `gpt-4.1-mini`. |
 | `OPENREEL_CHAT_TIMEOUT_MS` | Text synthesis deadline; default 25,000 ms, configurable from 10,000–180,000. The browser uses the validated public budget. |
 | `OPENAI_VISION_MODEL` | Vision model; falls back to an explicitly configured text model. |
+| `OPENAI_VISION_REASONING_EFFORT` | `low`, `medium` (default) or `high` for reasoning-model vision requests; legacy request controls stay unchanged. |
 | `OPENAI_VISION_RESPONSE_FORMAT` | `json_schema` by default; optional legacy `json_object`. |
 | `OPENREEL_VISION_TIMEOUT_MS` | Vision deadline; default 45,000 ms, configurable from 10,000–180,000 for slower providers. |
 | `OPENAI_TRANSCRIPTION_MODEL` | Explicit speech model; no text/vision-model fallback. |
