@@ -22,6 +22,8 @@ The later [website](https://lightreel.ai/) and [API documentation](https://light
 
 ## Recorded implementation evidence
 
+- **Brief deliverable recovery (1.16.4):** an actual browser returned research instead of a brief for the typed “Make a brief” request. Shared noun-form intent and explicit synthesis guidance correct that path while preserving source scope and distinguishing brevity instructions. A real browser fix returned original hooks and a proposed20-second shot list. Response quality and source-caption inference limits remain recorded. This does not close other parity requirements.
+
 - **Vision validation recovery (1.16.3):** a closed static category guides the existing single correction under its shared deadline. Two natural stored-frame HTTP requests returned AI reviews; the initial workout failure and original replies are retained. Narrow visual-language/proposed-duration fixes and reviewed negative controls address those reproduced false rejections. Stored-frame success does not establish continuous/auditory understanding, representative accuracy or fresh source access.
 
 - **Source access/recovery (1.16.3):** the next fixed-order current-cohort acquisition hit an actual public-player video 403 after a 200 document, before frames or model calls. Further collection stopped. Denied media now terminates promptly; failed selected sources offer Clear, with controlled Chrome/draft/reload/mobile checks. This improves error recovery without closing current coverage or critique-quality gaps.

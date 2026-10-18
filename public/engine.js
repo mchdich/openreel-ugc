@@ -381,7 +381,8 @@ function retrievalText(question){
   const evidence=focus.replace(/(?:^|[.!?;]\s*)distinguish\s+(?:visible|observed|shown)\s+(?:objects|actions|details|facts|evidence)\s+from\s+(?:any\s+action\s+that\s+is\s+not\s+established|(?:inferred|unverified|unsupported)\s+(?:actions?|details|claims|assumptions))\b/gi,'.');
   return evidence.replace(/^(?:write|draft|suggest|generate|propose|give me)\s+(?:(?:\d+|one|two|three|four|five|some|new|alternative)\s+)*(?:hooks?|openings?|opening lines?|briefs?|scripts?)\s+(?:for|about)\s+/i,'').replace(/(?:[.!?;]\s*|,?\s+and\s+)(?:cite|suggest|write|draft|propose|generate|(?:give me|include)\s+(?:(?:\d+|one|two|three|four|five|some|the)\s+)?(?:hooks?|openings?|examples?|citations?|source videos?|shot lists?)|turn (?:this|these|it) into)\b[\s\S]*$/i,'').trim();
 }
-export const wantsWriting=message=>/^(?:turn (?:this|these|it) into|make (?:this|these|it|a brief)|(?:write|draft|suggest|give me|generate|propose)\s+(?:(?:\d+|one|two|three|four|five|some|alternative|new|more|a|an)\s+)*(?:hooks?|openings?|opening lines?|scripts?|briefs?|shot lists?))\b/i.test(message);
+export const wantsCreativeBrief=message=>/^(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?(?:(?:(?:write|draft|suggest|give me|generate|propose|make|create)\s+(?:(?:this|these|it)\s+(?:into\s+)?(?=(?:a|an|the)\s+))?|turn\s+(?:this|these|it)\s+into\s+)(?:(?:\d+|one|two|three|four|five|some|alternative|new|more|a|an|the|short|concise)\s+){0,5}(?:creative\s+briefs?|briefs?|shot\s+lists?)\b|(?:a\s+)?(?:creative\s+brief|shot\s+list)\b)/i.test(String(message).trim());
+export const wantsWriting=message=>wantsCreativeBrief(message)||/^(?:turn (?:this|these|it) into|make (?:this|these|it|a brief)|(?:write|draft|suggest|give me|generate|propose)\s+(?:(?:\d+|one|two|three|four|five|some|alternative|new|more|a|an)\s+)*(?:hooks?|openings?|opening lines?|scripts?|briefs?|shot lists?))\b/i.test(message);
 const writingFollowup=message=>wantsWriting(message)&&!/\b(?:for|about)\s+(?!(?:this|that|these|those|it|them|the above)\b)[a-z]/i.test(message);
 export const wantsCreatorSearch=query=>/\b(?:creators?|influencers?)\b/i.test(query)&&(!/\b(?:hooks?|openings?|videos?|formats?|patterns?)\b/i.test(query)||/\b(?:find|show|list|discover|get|give(?: me)?)\s+(?:(?!(?:hooks?|openings?|videos?|formats?|patterns?)\b)[\w@,.-]+\s+){0,8}(?:creators?|influencers?)\b/i.test(query));
 
@@ -426,7 +427,7 @@ export function research(records, question, history = [], {reference,sourceQuery
   const message = String(question || '').trim();
   const previous = [...history].reverse().find(item => item?.role === 'user' && typeof item.content === 'string' && item.content !== message)?.content;
   const query = retrievalText(sourceQuery??researchQuery(message,history));
-  const wantsBrief = /\bcreative brief|\bshot list\b/i.test(message);
+  const wantsBrief = wantsCreativeBrief(message);
   const kind = /\b(?:underperform|flop|critique|review this|my (?:script|video)|why did)\b|\b(?:transcript|script)\s*:/i.test(query) ? 'critique'
     : wantsBrief ? 'critique' : /\btrends?|trending|patterns?\b/i.test(query) ? 'trends'
     : wantsCreatorSearch(query)||wantsSimilarity(query) ? 'creators' : 'research';
@@ -458,12 +459,12 @@ export function research(records, question, history = [], {reference,sourceQuery
       sections.push({heading:trend.format,sourceIds:trend.records.map(record=>record.id),text:`${trend.count} videos from ${trend.creators.length} creators. Evidence: ${basis}. ${dateText} ${trend.avgViews===null?'View metrics are unavailable.':`${trend.measuredVideos} measured videos average ${trend.avgViews.toLocaleString('en-US')} views.`} ${trend.avgEngagementRate===null?'Engagement metrics are unavailable.':`Average engagement per view is ${trend.avgEngagementRate}%.`} ${window.limit} Descriptive averages do not show that the format caused performance.`});
     }
   } else if (kind === 'critique') {
-    title = wantsBrief ? 'Creative brief from your script' : 'Video and script critique';
+    title = wantsBrief ? 'Creative brief' : 'Video and script critique';
     const provided = (wantsBrief && previous ? previous : query).match(/\b(?:script|transcript)[^:\n]{0,100}:\s*([\s\S]+)/i)?.[1]?.trim();
     const referenced = records.filter(record => record.handle&&query.includes(record.handle) || (record.url && query.includes(record.url)));
     sources = wantsBrief ? sources : referenced;
     const script = provided || sources[0]?.transcript || sources[0]?.caption;
-    summary = script ? 'This critique uses the supplied script or stored transcript and available metrics. It cannot assess footage, delivery, retention or the cause of performance from text alone.' : 'I cannot fetch or watch a pasted video URL. Add its transcript or script, plus metrics, to get a grounded critique.';
+    summary = wantsBrief ? script ? 'Proposed creative brief based on the supplied source text. The shots and copy are suggestions, not observations of available footage or promised performance.' : 'No matching source text or supplied script is available for a grounded brief. Add relevant records or a script.' : script ? 'This critique uses the supplied script or stored transcript and available metrics. It cannot assess footage, delivery, retention or the cause of performance from text alone.' : 'I cannot fetch or watch a pasted video URL. Add its transcript or script, plus metrics, to get a grounded critique.';
     if (script) {
       const opening = script.split(/(?<=[.!?])\s+/)[0].slice(0, 220);
       const sentences = script.split(/(?<=[.!?])\s+/).map(sentence => sentence.trim()).filter(Boolean);

@@ -113,3 +113,29 @@ test('evidence instructions cannot discard profile constraints in their own sent
  const records=normalizeRecords([{id:'eligible',handle:'eligible',caption:'Fleur de Sel coffee',school:'UCLA',followers:2000,email:'yes@example.com',bio:'UCLA yes@example.com'},{id:'excluded',handle:'excluded',caption:'Fleur de Sel coffee',school:'Yale',followers:5}]);
  for(const q of [question,question.replace(', using only',' using only')]){const plan=searchPlan(q);assert.equal(plan.filters.school,'ucla');assert.equal(plan.filters.minFollowers,1000);assert.equal(plan.filters.emailInBio,true);assert.deepEqual(research(records,q).sources.map(r=>r.id),['eligible']);}
 });
+
+test('plain Make a brief followup produces a brief with hooks and proposed shots from the original sources',async()=>{
+ const history=[{role:'user',content:question},{role:'assistant',content:'Cooking hook research.'}];
+ const result=await(await handleApi(request({question:'Make a brief.',history,records}))).json();
+ assert.equal(result.kind,'critique');assert.match(result.title,/creative brief/i);
+ assert.deepEqual(result.sources.map(r=>r.id),['cook','cook-again']);
+ assert.ok(result.sections.some(s=>/hooks to test/i.test(s.heading)));
+ assert.ok(result.sections.some(s=>/shot list/i.test(s.heading)&&/suggestions|proposed/i.test(s.text)));
+ assert.doesNotMatch(result.title,/your script/i);
+});
+
+test('mentioning a brief outside a writing request does not replace creator or research intent',()=>{
+ assert.equal(research(records,'Find cooking creators that match my brief').kind,'creators');
+ assert.equal(research(records,'Compare cooking creative brief examples').kind,'research');
+});
+
+test('explicit creative brief and shot-list requests retain the original research topic',()=>{
+ const history=[{role:'user',content:question}];
+ for(const request of ['Write a creative brief.','Give me a creative brief.','Make a shot list.','Create a shot list.','Make this into a creative brief.','Please write a creative brief.']){
+  const result=research(records,request,history);assert.equal(result.kind,'critique',request);assert.match(result.title,/creative brief/i,request);assert.ok(result.sections.some(s=>/shot list/i.test(s.heading)),request);assert.deepEqual(result.sources.map(r=>r.id),['cook','cook-again'],request);
+ }
+});
+
+test('a brevity instruction does not demand a new creative-brief deliverable',()=>{
+ const result=research(records,'Make this brief.',[{role:'user',content:question}]);assert.notEqual(result.title,'Creative brief');assert.ok(!result.sections.some(s=>/shot list/i.test(s.heading)));assert.deepEqual(result.sources.map(r=>r.id),['cook','cook-again']);
+});

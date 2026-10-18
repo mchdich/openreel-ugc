@@ -1,9 +1,17 @@
-# Local demo verification — 1.16.3
+# Local demo verification — 1.16.4
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text uses GPT-5.4 mini, current vision uses GPT-5.4, and opening speech uses gpt-transcribe. Earlier whisper-1 and gpt-4o-transcribe failures remain recorded below. No provider responses were substituted in the browser acceptance runs.
 
 The tested research, writing, creator-filter and upload paths work. **Full equivalence to the original advert is not established.** Web-assisted candidates can now reach outside the seed index, with independently checked official profile facts. Unrestricted discovery, representative coverage and current emerging-trend evidence remain open. The hosted snapshot uses matching public source releases, retaining its smaller D1 corpus and no provider key; the configured AI results concern the local app.
 
+
+## Plain-language brief deliverable (1.16.4)
+
+An ordinary browser sequence caught a content failure that initial HTTP/AI/source assertions missed: typing “Make a brief.” after cooking research repeated the research and openings without a shot list. The original response and the limited transport/UI pass are retained separately; they do not count as successful brief acceptance. The Make a brief button sends a longer explicit request, but the typed equivalent must select the same deliverable.
+
+The cause was split intent recognition: writing follow-up retrieval preserved the topic, while brief routing recognized only “creative brief” or “shot list.” A common brief-intent predicate now recognizes noun-form brief/shot-list requests, preserves research history, and distinguishes “Make this brief” as a brevity request. Independent review's explicit Write/Give/Make/Create regression and adjectival-brevity findings were reproduced before correction. A brief is labeled as proposed copy and shots, without claiming the user supplied a script. Synthesis receives an explicit current-deliverable instruction so earlier research directions do not replace the brief.
+
+The first real browser fix returned three original openings and a six-part shot list covering0:00–0:20 in6.086s, with source citations, reload/mobile and unchanged-corpus checks. This is actual provider output, not a substituted response. Its summary still generalizes audience appeal beyond direct caption evidence; the proposed deliverable is useful, but the inference is not proof of performance. Final source/grammar and exact commit/browser/CI results are recorded in the external release artifact. Full advertised parity, representative critique quality, unrestricted discovery and current emergence remain open.
 
 ## Source access and selection recovery (1.16.3)
 
