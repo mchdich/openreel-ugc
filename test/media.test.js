@@ -60,6 +60,15 @@ test('unconfigured analysis fails explicitly before any provider request', async
   }
 });
 
+test('validated critique preserves structured sample timestamps for source citation and reload',async()=>{
+ await withProvider(respond(narrative()),async env=>{const result=await analyzeVideo(attachment(),'Review visible samples',env);assert.deepEqual(result.sections[0].timestamps,[0]);assert.deepEqual(result.sections[1].timestamps,[0,5.5]);});
+});
+
+test('natural singular and plural camera framing phrases are not mistaken for social view metrics',async()=>{
+ for(const summary of ['The opening shows a wide POV view of the coffee station.','The sampled sequence jumps from earlier machine views to tighter detail frames.','Trim repeated setup views.','A similar frontal view and a wider countertop view show the coffee station.','Try the tighter 0s or 5.5s view where the machine fills the frame.','The ending keeps more of the machine in view.','Try a tighter view to improve clarity.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edits',env)).mode,'ai'));
+ for(const summary of ['Product views reached 999999.','Product views hit 999999.','You reported product views reached 999999.','You reported product views hit 999999.','Product views are 999999.','The product views total 999999.','You reported product views are 999999.','This edit guarantees 999999 product views.','The machine views doubled.','This will improve product views.','You reported 999999 product views.','This edit guarantees more product views.','This increases views.','This increases machine views.','The machine views increased.','POV views increased.','The machine view count is 999999.','This earns 999999 views.','A wider view at 999999s shows the product.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual edits',env),'provider-invalid-response',502));
+});
+
 test('real HTTP provider receives every frame with timestamps and result retains only verified metadata', async () => {
   let received;
   await withProvider(async (request, response) => {

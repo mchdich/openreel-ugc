@@ -77,9 +77,14 @@ export function retainPostingDate(previous,current){
 
 /** A citation for sampled visual interpretation, never raw footage or an audio claim. */
 export function normalizeVisualEvidence(value,record){
+  if(record.descriptionSource!=='openreel-vision'||!record.visualDescription)throw new Error('Invalid sampled-frame visual evidence.');
+  return normalizeCapturedFrames(value,record);
+}
+/** Shared source receipt; a critique receipt does not annotate the corpus. */
+export function normalizeCapturedFrames(value,record){
   const bad=()=>new Error('Invalid sampled-frame visual evidence.');
   const shape=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
-  if(!shape(value,['sourceType','sourceUrl','creatorId','observedAt','duration','frames'])||value.sourceType!=='tiktok-public-player-frames'||record.demo!==false||record.descriptionSource!=='openreel-vision'||!record.visualDescription)throw bad();
+  if(!shape(value,['sourceType','sourceUrl','creatorId','observedAt','duration','frames'])||value.sourceType!=='tiktok-public-player-frames'||record.demo!==false)throw bad();
   let url;try{url=new URL(value.sourceUrl);}catch{throw bad();}
   const id=url.pathname.match(/^\/@[a-z0-9_][a-z0-9_.]{0,79}\/video\/(\d{1,30})$/i)?.[1];
   if(url.protocol!=='https:'||url.hostname!=='www.tiktok.com'||url.username||url.password||url.port||url.search||url.hash||url.href!==value.sourceUrl||record.id!==`tiktok-${id}`||!id||typeof value.creatorId!=='string'||!/^\d{1,30}$/.test(value.creatorId)||record.creatorId&&record.creatorId!==value.creatorId)throw bad();

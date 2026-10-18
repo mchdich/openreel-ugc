@@ -32,7 +32,8 @@ test('portable Worker serves the exact client and handles research without Node 
   assert.equal(await response.text(),await readFile(new URL('../public/index.html',import.meta.url),'utf8'));
   assert.match(response.headers.get('content-security-policy'),/script-src 'self'/);
   const status=await worker.fetch(new Request('https://example.test/api/status'));
-  assert.equal((await status.json()).providerConfigured,false);
+  const available=await status.json();assert.equal(available.providerConfigured,false);assert.equal(available.sourceVideoAvailable,false);
+  const unsupported=await worker.fetch(new Request('https://example.test/api/videos/analyze',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url:'https://www.tiktok.com/@public_fixture/video/123456',question:'Review'})}));assert.equal(unsupported.status,503);
   const answer=await worker.fetch(new Request('https://example.test/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:'Find NYU creators',records:[]})}));
   assert.equal(answer.status,200);
   const result=await answer.json();assert.deepEqual(result.creators,[]);assert.match(result.summary,/no creators/i);

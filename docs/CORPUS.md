@@ -189,6 +189,25 @@ The apply command performs no fetching. It accepts a raw delta array or `{ "delt
 
 The merge preserves numeric creator IDs, captions, transcripts, separately labeled descriptions, posting dates, metrics and missing flags, archive/profile provenance, original ingestion source/time, corpus classification and verification. Only the observed fields and compact `metadataEvidence` change. Its field list identifies the covered metadata; it does not promote the whole archival record to `provider-observed`. Original dataset and underlying-content rights remain attached, including CC-BY-NC restrictions where applicable. A recent handle/cover observation does not establish current trend activity or newly analyzed archival text. Keep acquired reports and creator content outside source control; none are bundled with this collector.
 
+## In-app public-source review
+
+The local Node server can use an already installed browser/runtime for explicit video critique:
+
+```sh
+OPENREEL_PLAYWRIGHT_MODULE=/absolute/path/to/playwright
+OPENREEL_BROWSER_PATH=/absolute/path/to/chromium
+```
+
+Set these with your existing vision provider configuration and restart the server. Absolute Windows paths also work with native Windows Node. No browser, module, provider key or data is installed or acquired automatically. The portable Worker reports this optional Node-only capability unavailable; local runtime paths and keys are not copied to cloud.
+
+In **Video library**, import a direct public URL, open its details and choose **Review video**. The app reads matching public metadata, captures the ordinary official player's decoded samples under the existing access/identity/45-second/50-MiB observed-data bounds, then uses the existing multimodal critique. The source record, exact sample times and source/time/hash receipt accompany the result. No generic intermediate description or automatic annotation is written to the corpus. Explicit metadata import may refresh an existing row before review; review and follow-up themselves leave it unchanged.
+
+`POST /api/videos/analyze` accepts exactly `{url,question}` for a new review, or `{sessionId,question}` for an explicit follow-up. Public access requires the operator token before browser or model work. There is one active source operation per server and a 240-second overall deadline. Disconnect cancellation reaches capture and the provider. Existing vision validation permits one bounded correction reply under the same provider timeout; failed network/player access is not retried automatically.
+
+At most two frame sets stay in server memory, expiring ten minutes after capture. Follow-ups reuse the same opaque session without another source capture. Raw images and session tokens are not saved/exported in browser workspace or corpus records. Expiry/restart fails explicitly. Reload retains critique, source links and validated capture/section timestamps; it ends the tab's temporary follow-up context, so choose **Review video** again for another visual follow-up. Saved source receipts must exactly match analysis duration, frame count, ordered times and no-audio/transcript flags.
+
+Source audio is not acquired by this path. Eight fixed samples do not establish intervening actions, continuous edits or complete pacing. Uploaded local videos retain their separate adaptive sampling/transcription flow. Real tests found both a camera-word validation error and an uncorrected portafilter/pitcher interpretation error. Review output as model interpretation; this workflow does not establish fully automatic factual accuracy or current emerging trends.
+
 ## Optional public source-frame descriptions
 
 This local acquisition command requires an already installed Playwright module and Chromium executable, plus your own configured vision API key/model. The app still has no runtime package dependencies. Nothing installs automatically or copies a local key to hosting.

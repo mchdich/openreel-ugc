@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { handleApi, MAX_BODY_BYTES } from './lib/api.js';
+import {createNativeSourceVideoService} from './lib/source-video.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), 'public');
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.woff2':'font/woff2' };
@@ -21,6 +22,7 @@ function publicOrigin(value) {
 
 export function createAppServer(env = process.env) {
   const configuredPublicOrigin = publicOrigin(env.OPENREEL_PUBLIC_ORIGIN);
+  const sourceVideo=env.OPENREEL_SOURCE_VIDEO||createNativeSourceVideoService(env);
   return createServer(async (incoming, outgoing) => {
     outgoing.setHeader('x-content-type-options', 'nosniff');
     outgoing.setHeader('referrer-policy', 'no-referrer');
@@ -48,8 +50,9 @@ export function createAppServer(env = process.env) {
         headers.set('x-openreel-client-ip', incoming.socket.remoteAddress || 'unknown');
         // Public origin is operator configuration; forwarded request headers are never trusted.
         const apiUrl = configuredPublicOrigin ? new URL(url.pathname + url.search, configuredPublicOrigin) : url;
-        const request = new Request(apiUrl.href, { method: incoming.method, headers, ...(body ? { body } : {}) });
-        const response = await handleApi(request, { ...env, OPENREEL_LOCAL_REQUEST: !configuredPublicOrigin && loopback(incoming.socket.remoteAddress) && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) });
+        const cancelled=new AbortController();incoming.once('aborted',()=>cancelled.abort());outgoing.once('close',()=>{if(!outgoing.writableEnded)cancelled.abort();});
+        const request = new Request(apiUrl.href, { method: incoming.method, headers, signal:cancelled.signal, ...(body ? { body } : {}) });
+        const response = await handleApi(request, { ...env,OPENREEL_SOURCE_VIDEO:sourceVideo, OPENREEL_LOCAL_REQUEST: !configuredPublicOrigin && loopback(incoming.socket.remoteAddress) && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) });
         outgoing.writeHead(response.status, Object.fromEntries(response.headers));
         outgoing.end(Buffer.from(await response.arrayBuffer()));
         return;
