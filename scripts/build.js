@@ -18,7 +18,7 @@ async function moduleBundle(file,name,bindings=''){
   return `const ${name}=(()=>{${bindings}\n${source.replace(/^import[^\n]+\n/gm,'').replace(/^export /gm,'')}\nreturn {${names.join(',')}};})();\n`;
 }
 const engine=await moduleBundle('public/engine.js','engineModule');
-const temporal=await moduleBundle('public/temporal.js','temporalModule','const {getTrends,creatorKey}=engineModule;');
+const temporal=await moduleBundle('public/temporal.js','temporalModule','const {getTrends,creatorKey,formatEvidence}=engineModule;');
 const temporalQuery=await moduleBundle('public/temporal-query.js','temporalQueryModule');
 const visualFacts=await moduleBundle('public/visual-facts.js','visualFactModule','const {hasVisualDescriptionEvidence}=engineModule;');
 const visualCore=await moduleBundle('public/visual-patterns.js','visualPatternCore','const {creatorKey,summarizePatternGroup,hasVisualDescriptionEvidence}=engineModule;const {visualFeatures,visualFeatureEvidence}=visualFactModule;');

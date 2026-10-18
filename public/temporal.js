@@ -1,4 +1,4 @@
-import { getTrends, creatorKey } from './engine.js';
+import { getTrends, creatorKey, formatEvidence } from './engine.js';
 
 const DAY_MS = 86_400_000;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -78,7 +78,7 @@ function basisText(sourceGroups) {
 
 /** Compare adjacent dated windows within the supplied records, without clock or network access. */
 export function analyzeMomentum(records, { asOf, windowDays = 7 } = {}) {
-  if (!Array.isArray(records)) throw invalid('records must be an array of normalized source records.');
+  if (!records || typeof records === 'string' || typeof records[Symbol.iterator] !== 'function') throw invalid('records must be an array or iterable of normalized source records.');
   const end = calendarDay(asOf);
   if (end === null) throw invalid('asOf must be a real calendar date in YYYY-MM-DD format.');
   if (!Number.isInteger(windowDays) || windowDays < 1 || windowDays > 90) throw invalid('windowDays must be an integer from 1 to 90.');
@@ -88,14 +88,15 @@ export function analyzeMomentum(records, { asOf, windowDays = 7 } = {}) {
     prior: { start: dayLabel(priorStart), end: dayLabel(currentStart - 1), recordCount: 0 }
   };
   const coverage = {
-    retrievedRecords: records.length, uniqueRecords: 0, duplicateRecords: 0, invalidRecords: 0,
+    retrievedRecords: 0, uniqueRecords: 0, duplicateRecords: 0, invalidRecords: 0,
     exampleRecordsExcluded: 0, missingDates: 0, invalidDates: 0, datedRecords: 0,
     beforeWindows: 0, afterAsOf: 0, comparedRecords: 0,
     unknownTimezoneRecords: 0, comparedUnknownTimezoneRecords: 0,
     detectedGroups: 0, reportedGroups: 0, citedRecords: 0
   };
-  const dates = new Map(), compared = [], currentIds = new Set(), seen = new Set();
+  const dates = new Map(), compared = [], currentIds = new Set(), seen = new Set(), comparedCreators = new Set();
   for (const record of records) {
+    coverage.retrievedRecords++;
     if (!record || typeof record !== 'object' || typeof record.id !== 'string' || !record.id || !creatorKey(record)) { coverage.invalidRecords++; continue; }
     if (seen.has(record.id)) { coverage.duplicateRecords++; continue; }
     seen.add(record.id); coverage.uniqueRecords++;
@@ -107,10 +108,15 @@ export function analyzeMomentum(records, { asOf, windowDays = 7 } = {}) {
     if (date.unknownTimezone) coverage.unknownTimezoneRecords++;
     if (date.day < priorStart) { coverage.beforeWindows++; continue; }
     if (date.day > end) { coverage.afterAsOf++; continue; }
-    dates.set(record.id, date); compared.push(record); coverage.comparedRecords++;
+    coverage.comparedRecords++; comparedCreators.add(creatorKey(record));
     if (date.unknownTimezone) coverage.comparedUnknownTimezoneRecords++;
-    if (date.day >= currentStart) { currentIds.add(record.id); windows.current.recordCount++; }
+    if (date.day >= currentStart) windows.current.recordCount++;
     else windows.prior.recordCount++;
+    // Unclassified rows still count in every denominator, without retaining their payload.
+    if (formatEvidence(record).length) {
+      dates.set(record.id, date); compared.push(record);
+      if (date.day >= currentStart) currentIds.add(record.id);
+    }
   }
   // Sort before classification so supplied label casing and representative order are stable.
   compared.sort((a, b) => compareText(a.id, b.id));
@@ -149,19 +155,19 @@ export function analyzeMomentum(records, { asOf, windowDays = 7 } = {}) {
   const sources = [...sourceMap.values()];
   coverage.reportedGroups = groups.length; coverage.citedRecords = sources.length;
   const rising = groups.filter(group => group.risingWithinSample).length;
-  const summary = !compared.length ? `No dated records fall within the two comparison windows ending ${asOf}. No rising-format signal can be established.` : rising ? `${rising} format${rising === 1 ? ' is' : 's are'} rising within the supplied sample for the dated window ending ${asOf}. This compares ${windows.current.recordCount} current-window and ${windows.prior.recordCount} prior-window records; it does not measure platform-wide growth.` : `No format meets the rising-within-sample requirements in the dated windows ending ${asOf}. This compares ${windows.current.recordCount} current-window and ${windows.prior.recordCount} prior-window records.`;
+  const summary = !coverage.comparedRecords ? `No dated records fall within the two comparison windows ending ${asOf}. No rising-format signal can be established.` : rising ? `${rising} format${rising === 1 ? ' is' : 's are'} rising within the supplied sample for the dated window ending ${asOf}. This compares ${windows.current.recordCount} current-window and ${windows.prior.recordCount} prior-window records; it does not measure platform-wide growth.` : `No format meets the rising-within-sample requirements in the dated windows ending ${asOf}. This compares ${windows.current.recordCount} current-window and ${windows.prior.recordCount} prior-window records.`;
   const notice = 'These are retrieved-sample comparisons anchored to the supplied as-of calendar date, which may be historical, not evidence of what is emerging today or across the platform. Unknown timezones are preserved. A single cumulative views or engagement snapshot cannot establish metric growth, cause or performance gains.';
   sections.push({
     heading: 'Coverage and limits', sourceIds: [],
-    text: `${records.length} retrieved rows; ${coverage.uniqueRecords} unique source records; ${coverage.duplicateRecords} duplicate rows and ${coverage.invalidRecords} invalid records excluded. ${coverage.comparedRecords} dated records compared; ${coverage.missingDates} missing and ${coverage.invalidDates} invalid posting dates excluded; ${coverage.beforeWindows} dated records precede the windows and ${coverage.afterAsOf} follow the as-of date. ${coverage.exampleRecordsExcluded} fictional example records excluded. ${coverage.comparedUnknownTimezoneRecords} compared records have unknown timezones. ${coverage.detectedGroups} eligible multi-creator formats; ${groups.length} reported; ${sources.length} actual representative clips cited. Shares use all dated records in each window, including records with no supported format; a clip can support multiple formats, so shares need not sum to 100%. ${notice}`
+    text: `${coverage.retrievedRecords} retrieved rows; ${coverage.uniqueRecords} unique source records; ${coverage.duplicateRecords} duplicate rows and ${coverage.invalidRecords} invalid records excluded. ${coverage.comparedRecords} dated records compared; ${coverage.missingDates} missing and ${coverage.invalidDates} invalid posting dates excluded; ${coverage.beforeWindows} dated records precede the windows and ${coverage.afterAsOf} follow the as-of date. ${coverage.exampleRecordsExcluded} fictional example records excluded. ${coverage.comparedUnknownTimezoneRecords} compared records have unknown timezones. ${coverage.detectedGroups} eligible multi-creator formats; ${groups.length} reported; ${sources.length} actual representative clips cited. Shares use all dated records in each window, including records with no supported format; a clip can support multiple formats, so shares need not sum to 100%. ${notice}`
   });
   return {
     kind: 'trends', mode: 'deterministic', title: `Dated format momentum as of ${asOf}`,
     summary, notice, sections, sources, creators: [],
     stats: {
-      totalRecords: records.length, matchedRecords: compared.length,
-      retrievedRecords: records.length, comparedRecords: compared.length, citedRecords: sources.length,
-      uniqueCreators: new Set(compared.map(creatorKey)).size,
+      totalRecords: coverage.retrievedRecords, matchedRecords: coverage.comparedRecords,
+      retrievedRecords: coverage.retrievedRecords, comparedRecords: coverage.comparedRecords, citedRecords: sources.length,
+      uniqueCreators: comparedCreators.size,
       totalViews: null, avgViews: null, avgEngagementRate: null, measuredVideos: 0
     },
     temporal: { asOf, windowDays, windows, groups, coverage }

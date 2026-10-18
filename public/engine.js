@@ -312,9 +312,7 @@ export function summarizePatternGroup(group){
 
 }
 
-/** Supplied labels or explicit described formats need two distinct creator identities. */
-export function getTrends(records) {
-  const patterns=[
+const FORMAT_PATTERNS=[
     {format:'Unboxing',label:/^unboxing$/i,phrase:/\bunbox(?:ing|es)\b/i},
     {format:'Before / after',label:/^before\s*(?:\/|and|[-–—])\s*after(?: transformation)?$/i,phrase:/\bbefore\s*(?:\/|and|[-–—])\s*after\b/i},
     {format:'Step-by-step tutorial',label:/^step[- ]by[- ]step (?:tutorial|demonstration)$/i,phrase:/\bstep[-‐‑–— ]+by[-‐‑–— ]+step\b.{0,45}\b(?:tutorial|demonstration|guide|walkthrough|instructions?)\b|\b(?:tutorial|demonstration|guide|walkthrough)\b.{0,45}\bstep[-‐‑–— ]+by[-‐‑–— ]+step\b/i},
@@ -323,11 +321,12 @@ export function getTrends(records) {
     {format:'Get ready with me',label:/^(?:grwm|get ready with me)$/i,phrase:/\b(?:grwm|get ready with me)\b/i},
     {format:'Day in the life',label:/^day[- ]in[- ](?:the[- ]|my[- ]|a[- ])?life$/i,phrase:/\bday[- ]in[- ](?:the[- ]|my[- ]|a[- ])?life\b/i}
   ];
-  const evidenceFor=record=>{
-    if(record.format?.trim())return [{format:patterns.find(p=>p.label.test(record.format.trim()))?.format||record.format.trim(),field:'format',excerpt:record.format}];
+/** Attributed evidence for one record; caption mentions are not depicted formats. */
+export function formatEvidence(record){
+    if(record.format?.trim())return [{format:FORMAT_PATTERNS.find(p=>p.label.test(record.format.trim()))?.format||record.format.trim(),field:'format',excerpt:record.format}];
     if(!hasVisualDescriptionEvidence(record))return [];
     const evidence=[];
-    for(const pattern of patterns){
+    for(const pattern of FORMAT_PATTERNS){
       for(const sentence of record.visualDescription.split(/(?<=[.!?])\s+|[;\n]+/)){
         const match=sentence.match(pattern.phrase);if(!match)continue;
         const before=sentence.slice(0,match.index),after=sentence.slice(match.index+match[0].length);
@@ -343,12 +342,15 @@ export function getTrends(records) {
       }
     }
     return evidence;
-  };
+}
+
+/** Supplied labels or explicit described formats need two distinct creator identities. */
+export function getTrends(records) {
   const groups = new Map(),seen=new Set();
   for (const record of records) {
     if(!record||typeof record!=='object')continue;
     const identity=creatorKey(record),id=record.id||record;if(!identity||seen.has(id))continue;seen.add(id);
-    for(const evidence of evidenceFor(record)){
+    for(const evidence of formatEvidence(record)){
       const key=lower(evidence.format);
       if(!groups.has(key))groups.set(key,{format:evidence.format,records:[],evidence:[]});
       const group=groups.get(key);group.records.push(record);group.evidence.push({recordId:record.id,creatorKey:identity,...Object.fromEntries(Object.entries(evidence).filter(([key])=>key!=='format'))});

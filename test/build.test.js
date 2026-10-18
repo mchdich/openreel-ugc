@@ -39,6 +39,10 @@ test('portable Worker serves the exact client and handles research without Node 
   const result=await answer.json();assert.deepEqual(result.creators,[]);assert.match(result.summary,/no creators/i);
   const dated=await worker.fetch(new Request('https://example.test/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:'What skincare formats are rising as of 2024-07-21 over 7 days?',records:[]})}));
   assert.equal(dated.status,200);assert.equal((await dated.json()).temporal.windows.prior.start,'2024-07-08');
+  const datedRows=['2024-07-20','2024-07-10'].flatMap((postedAt,day)=>[0,1].map(i=>({id:`dated-build-${day}-${i}`,handle:`@dated_${i}`,caption:'Skincare fixture',format:'Unboxing',postedAt})));
+  const nonempty=await worker.fetch(new Request('https://example.test/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:'What skincare formats are rising as of 2024-07-21 over 7 days?',records:datedRows})}));
+  assert.equal(nonempty.status,200);const datedResult=await nonempty.json();assert.equal(datedResult.temporal.windows.current.recordCount,2);assert.equal(datedResult.temporal.groups[0].prior.videoCount,2);
+
   assert.equal((await worker.fetch(new Request('https://example.test/missing'))).status,404);
   assert.equal((await worker.fetch(new Request('https://example.test/',{method:'POST'}))).status,405);
   const original=globalThis.fetch;let postCalls=0;

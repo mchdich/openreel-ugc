@@ -1,4 +1,4 @@
-# Local demo verification — 1.14.1
+# Local demo verification — 1.15.0
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text uses GPT-5.4 mini, current vision uses GPT-5.4, and opening speech uses gpt-transcribe. Earlier whisper-1 and gpt-4o-transcribe failures remain recorded below. No provider responses were substituted in the browser acceptance runs.
 
@@ -12,6 +12,16 @@ The tested research, writing, creator-filter and upload paths work. **Full equiv
 4. Attach a video and ask: **Why did my video only get 200 views? Give me three concrete changes and a stronger opening.** The browser extracts up to eight sampled frames and available audio. The model can suggest edits; it cannot establish why a reported metric occurred. Actual upload and natural-footage results are recorded below.
 5. Choose Live search and ask: **Find coffee creators**. With optional web discovery enabled locally, the final actual flow returned @jameshoffmanncoffee, @morgandrinkscoffee and @ryantagcoffee in 7.1 seconds. Start another Live chat: **Find NYU creators with at least 1,500 followers and public emails**. It returned @lizzie.crane with 3,858 observed followers and a public-bio email in 6.2 seconds. Both discovery/chat endpoints returned HTTP 200, all four table avatars loaded and the latest result survived reload. Coverage is a bounded set of checked profiles, not all TikTok.
 6. Open **Trends → Corpus**. The verified default browse now displays seven recurring formats with real source previews. Open a card to inspect its records, provenance and dates. Click **Detect visual patterns** for specific shared component proposals; the verified actual runs are recorded below. These examples are archival, not emerging trends today.
+
+## Complete local dated cohorts (1.15.0)
+
+Choose **Corpus → Deep research** and ask **Which formats are gaining share as of 2024-07-21 over 7 days?** The local SQLite adapter now counts every matching dated record from one statement snapshot. Topic/profile predicates are unchanged, each actual video contributes to the denominator, and the returned answer still contains at most 36 representative source clips. The scan stops with HTTP 413 and a request to narrow the dates/topic if it exceeds 250,000 matching rows or 256 MiB of source JSON; it never substitutes a partial answer. Normal retains 125 records per window. Adapters without the native complete-scan method retain their explicitly labeled 500-record-per-window Deep sample, including the Worker adapter.
+
+The actual ordinary local browser returned the complete **21,998-record** historical comparison in **1.176s**: 11,041 current-window and 10,957 prior-window records. Unboxing rose from 138 clips / 93 creators to 154 / 104, about +0.1353 percentage points in posting-cohort share. All groups, statistics and cited IDs match the earlier independent full-cohort proof. Normal returned 125/125 in 0.240s and no qualifying group. The complete October 18, 2026 check returned 4 current / 5 prior dated records in 0.115s and no qualifying format; no current emergence was claimed. These are individual measurements, not a latency benchmark. The historical result still uses attributed upstream-model descriptions, not fresh audiovisual understanding or platform-wide momentum.
+
+The browser retained exact visible counts, citations and complete-cohort notice after reload, passed 390px layout and had no page errors. Native and browser corpus statistics stayed unchanged. The final direct read-only historical scan took 0.983s. Independent review caught a missing generated-Worker binding and a preliminary SQLite payload sort; both were reproduced before their fixes and have meaningful regression coverage. The complete scan is now unordered before the reducer's deterministic classification/citation ordering, so the byte guard executes while rows stream. All **489 Node tests pass**; Python passed 17 with one optional skip; the portable Worker build passes.
+
+This closes the specific capped-cohort sign reversal in Deep local comparisons. It does not create recent source coverage or close representative audiovisual critique/discovery and remaining observable-reference requirements. Source-video outcomes from 1.14.1 remain separately attributed to that version below.
 
 ## Direct vision quality and natural response validation (1.14.1)
 
