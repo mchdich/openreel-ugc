@@ -1,9 +1,17 @@
-# Local demo verification — 1.16.5
+# Local demo verification — 1.16.6
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text and current vision use GPT-5.4, and opening speech uses gpt-transcribe. Earlier whisper-1 and gpt-4o-transcribe failures remain recorded below. No provider responses were substituted in the browser acceptance runs.
 
 The tested research, writing, creator-filter and upload paths work. **Full equivalence to the original advert is not established.** Web-assisted candidates can now reach outside the seed index, with independently checked official profile facts. Unrestricted discovery, representative coverage and current emerging-trend evidence remain open. The hosted snapshot uses matching public source releases, retaining its smaller D1 corpus and no provider key; the configured AI results concern the local app.
 
+
+## Attachment playback and observable-state audit (1.16.6)
+
+A new Chrome regression reproduced persistent idle playback controls and the olive composer focus styling. The preview now shows native controls on hover or keyboard focus, stays keyboard-focusable, and keeps controls available on touch devices. The final check uses the actual Attach button and file chooser; Space plays and pauses the owned generated clip, removing and choosing the same clip retains the draft, and the 390px touch view has no horizontal overflow. The Attach button already cleared its file input; an initial synthetic-dispatch test did not establish a user-facing reattachment bug, and no picker fix is claimed.
+
+The final ordinary UI capture retains the 762×308.64 composer, 89×158 preview, 41px avatar and 217×34 badge. Its focused border is neutral RGB201/201/201 and the idle image is unobstructed. Actual corpus browse still yields seven 320×329 cards, and a detail row is 530×121 with 58px thumbnails. Controlled transport with archived public metadata checks Finding→Found→answer/failure, source previews, chat isolation, preserved coverage and mobile layout. It is not a live search or AI-quality test. [Measurements, reference hierarchy and limits](OBSERVABLE_STATE_AUDIT.md).
+
+No further real model or source acquisition calls were made. The last actual generation failure remains HTTP429 `credit_balance_exhausted` / `insufficient_quota`; final semantic verification is incomplete. These UI checks do not establish the advert's video-understanding, representative creator discovery or current emerging-trend claims.
 
 ## Source-text reasoning and bounded evidence context (1.16.5)
 

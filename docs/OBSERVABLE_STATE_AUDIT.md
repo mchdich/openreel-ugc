@@ -1,0 +1,28 @@
+# Observable reference-state audit — 1.16.6
+
+The reference is the March16 [Lightreel launch advert](https://x.com/Jibran_05/status/2033589137018917027), inspected earlier through stored screenshots. It enlarges individual UI components and overlays promotional captions. The measurements below normalize the visible components, not a known original application viewport. No new reference video, proprietary source or private dataset was obtained or redistributed.
+
+## Measured comparisons
+
+| State | Reference basis | Current Chrome observation | Assessment |
+| --- | --- | --- | --- |
+| Attached composer | 1330×538 component; portrait155×276 at149,47; avatar71px; badge378×60. Normalize to762px width. | 762×308.64; portrait89×158 at85,27; avatar41px; badge217×34; query23px and submit33px. | Geometry remains within0.8px of the earlier normalized measurement. The idle image now has no native control overlay; focus is neutral gray. |
+| Desktop playback interaction | The advert shows an unobstructed idle preview. Its playback-control behavior is not demonstrated. | Hover/focus exposes native controls; actual Space play/pause succeeds; controls hide after blur and pointer exit. | Clean idle treatment matches the visible evidence; accessible playback behavior is independently implemented. |
+| Trend overview | Magnified1010×1038 card, approximately48px radius; three-image fan and creator footer. Normalize to320px width. | Seven actual corpus cards at320×329, radius15px; six have three loaded fan images, one has two available images. | Matches measured silhouette. Actual record titles/media and group coverage differ from the advert; no filler image is invented. |
+| Compact trend example | Magnified1743×398 row with two square covers, two-line title, handle, views and age. Normalize to530px width. | 530×121, two58px covers,19px title. One actual selected record is798days old. | Matches proportions. The historical date is retained instead of copying the advert's4days label. |
+| Retrieval progress | Magnified FindingTikTokvideos heading, discovered excerpts and thumbnail strip. Exact original app scale is unknown. | Fresh controlled capture shows3unique returned videos,2caption-labeled excerpts and3loaded thumbnails. No count appears before records arrive. | State ordering and evidence-backed content are verified. A five-thumbnail strip requires five actual records; this fixture returns three. Caption text is not relabeled as a spoken hook. |
+| Answer and source previews | March clips show grouped answers. A later public report separately establishes160×213.33 source covers with about6.4px gaps. | Current controlled response renders actual returned metadata in fixed160×213.33 covers and retains provider/coverage notices. | Source layout can be measured; controlled response rendering does not prove live retrieval or AI reasoning. |
+| Creator selection/results | March prompt combines similarity to a selected creator, UCLA, follower bounds and public email. The complete results table is not shown. A later landing page supplies table styling only. | Existing selected-reference and profile-filter flows remain; this increment does not rerun paid discovery or claim new creator evidence. | The March advert cannot establish exact result-table pixels. Representative combined-profile accuracy remains a separate open requirement. |
+| Touch layout | No original mobile view is available. | 390×844, native controls remain present, no horizontal overflow. | Responsive behavior is verified; mobile pixel parity is unknown. |
+
+## What was tested
+
+The optional checked-in `scripts/verify-video-sampling.js` generates its own local12.1second H.264 clip. It retains the baseline sample times, detects a short4–5second visual reveal, enforces the frame/progress limits and verifies cancellation. It then uses the real Attach button and browser file chooser, checks idle/hover/focus/native playback, removes and chooses the same file, confirms draft retention and checks touch layout. Guards abort any accidental paid analysis/discovery endpoint; the final blocked-request list is empty. This is generated-fixture/browser evidence, not a natural-video interpretation benchmark.
+
+A separate controlled HTTP-transport check uses previously archived public creator metadata and the current frontend. It verifies Finding→Found→completed response, chat isolation while pending, distinct returned source counts, source excerpts and covers, preservation of provider scope, failure cleanup and mobile overflow. It makes no real discovery or model call. An initial source-layout capture had zero sources because its QA query matched nothing; it was rejected and recaptured using the fixture's full returned records.
+
+The ordinary local capture uses the configured154486-record corpus for read-only pattern browse and prepares an owned local clip in the client. It does not submit the clip. The fresh screenshots record all application errors and paid-route interceptions; both lists are empty. No corpus records were written.
+
+## Remaining demo gate
+
+The last actual provider request failed with exhausted generation credits. No further real model calls were attempted, and final semantic verification remains open. Earlier natural-video errors, broad live discovery/profile coverage, incomplete current visual evidence and the absence of a qualifying current emerging format remain in the capability matrix. These measured UI improvements do not establish full advertised parity or a ready demo. OpenReel branding, actual activity counts, source/license labels and honest missing-data states remain intentional differences.
