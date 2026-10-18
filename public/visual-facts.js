@@ -1,3 +1,4 @@
+import {hasVisualDescriptionEvidence} from './engine.js';
 /** Composable, explicit visual predicates. Descriptions retain their upstream provenance. */
 export const visualFeatures=[
  {id:'split-screen',label:'Split-screen layout',clause:'a split-screen video layout',rules:[/\bsplit[- ]screen\s+(?:format|layout|duet|presentation)\b/i,/\b(?:video|visuals?|footage|clip)\b.{0,70}\bsplit[- ]screen\b/i]},
@@ -20,13 +21,13 @@ export const visualFeatures=[
  {id:'camera-facing',label:'Person facing the camera',clause:'a person explicitly facing the camera',rules:[/\b(?:person|man|woman|individual|creator|they|he|she)\s+(?:(?:is|are|stands?|sits?)\s+)?(?:directly\s+)?(?:faces?|facing)\s+(?:(?:at|toward(?:s)?)\s+)?(?:the\s+)?camera\b/i]},
  {id:'two-people',label:'Two-person composition',clause:'two people explicitly shown',rules:[/\b(?:shows?|features?|depicts?|captures?)\s+(?:two|2)\s+(?:people|individuals|persons|participants|creators)\b/i,/\b(?:two|2)\s+(?:people|individuals|persons|participants|creators)\s+(?:are\s+)?(?:visible|shown|seen|standing|sitting)\b/i]}
 ];
-const origins=new Set(['upstream-model','user-supplied','provider-observed']);
+
 // Conservatively discard the whole candidate sentence, including text consumed by
 // a rule. Checking only the prefix lets a broader fallback swallow a negation.
 const qualified=/\b(?:not|no|never|without|isn['’]t|aren['’]t|doesn['’]t|don['’]t|didn['’]t|wasn['’]t|weren['’]t|rather than|instead of|likely|probably|possibly|perhaps|might|may(?!\s+\d{1,2}\b)|could|would|plans?|planned|upcoming|future|suggests?|recommends?|encourages?|invites?|coming soon|tomorrow|next week|will be)\b/i;
 export function visualFeatureEvidence(record,featureId){
  const feature=visualFeatures.find(f=>f.id===featureId);
- if(!feature||!record||record.demo!==false||!origins.has(record.descriptionSource)||typeof record.visualDescription!=='string')return null;
+ if(!feature||!record||record.demo!==false||!hasVisualDescriptionEvidence(record)||typeof record.visualDescription!=='string')return null;
  for(const sentence of record.visualDescription.split(/(?<=[.!?])\s+|[;\n]+/)){
   if(qualified.test(sentence))continue;
   if(feature.id==='split-screen'&&/\b(?:mode|switch|function|capabilit)/i.test(sentence))continue;

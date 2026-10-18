@@ -189,6 +189,25 @@ The apply command performs no fetching. It accepts a raw delta array or `{ "delt
 
 The merge preserves numeric creator IDs, captions, transcripts, separately labeled descriptions, posting dates, metrics and missing flags, archive/profile provenance, original ingestion source/time, corpus classification and verification. Only the observed fields and compact `metadataEvidence` change. Its field list identifies the covered metadata; it does not promote the whole archival record to `provider-observed`. Original dataset and underlying-content rights remain attached, including CC-BY-NC restrictions where applicable. A recent handle/cover observation does not establish current trend activity or newly analyzed archival text. Keep acquired reports and creator content outside source control; none are bundled with this collector.
 
+## Optional public source-frame descriptions
+
+This local acquisition command requires an already installed Playwright module and Chromium executable, plus your own configured vision API key/model. The app still has no runtime package dependencies. Nothing installs automatically or copies a local key to hosting.
+
+```sh
+node --env-file=.env scripts/collect-player-visuals.js --urls source-urls.json --out data/source-visuals --playwright-module /absolute/path/to/playwright --browser-path /absolute/path/to/chromium --save-samples
+node scripts/corpus.js apply-video-evidence data/source-visuals/deltas.json --db data/corpus.sqlite
+```
+
+`source-urls.json` contains 1–3 unique canonical `https://www.tiktok.com/@handle/video/ID` URLs by default; `--limit` allows at most eight. These must already have real rows in the target database before applying. The collector makes one normal bounded public metadata read and one fresh ordinary official-player navigation per source, then captures up to eight JPEGs through the permitted in-page video canvas. Identity, duration, geometry, decoded playhead and access checks must pass. It never fetches a raw media URL itself, imports a browser profile, changes authentication, interacts with access challenges, retries a failed source or saves video footage. Internal player fallback requests/errors remain in the report and do not count as a collector retry.
+
+Each capture has a 45-second deadline and a 50 MiB CDP-observed data budget; that is observed response data rather than a guarantee about all wire traffic. Cleanup has a separate 500 ms bound; a stalled cleanup stops the collector process after preserving the report. The default batch deadline is 240 seconds, adjustable up to 600 seconds. A source failure ends the batch. The configured vision provider receives only validated timestamped JPEGs, once per successfully captured source, under the shared batch deadline and provider timeout. No speech/audio is acquired. Opening/later fixed samples differ from the adaptive local-upload scan and can miss short events.
+
+The command writes `observations.json`, `deltas.json` and `summary.json` without touching the database. `--save-samples` also writes JPEGs for review; it is off by default. Review every description against its samples before applying. Actual tests caught two object/state errors that required explicit factual corrections; schema validation cannot establish visual accuracy. Keep reports, media and acquired data outside published source.
+
+`apply-video-evidence` requires an existing explicit database, at most eight unique deltas and a bounded input file. It atomically changes only `visualDescription`, `descriptionSource`, `visualEvidence` and the FTS projection on existing real rows. Other JSON/SQL fields, ingestion timestamps, classification, verification, licensing and counts stay intact. Whole-record imports retain replacement behavior. Source receipts hold canonical identity, creator ID, UTC capture time, duration and chronological JPEG hashes; no raw frames enter records. Receipts declare capture provenance and do not promote user-supplied records to independently verified acquisition. Normal acquisition retains earlier visual evidence only from persisted real/provider-observed rows, while explicit browser-library receipts retain their declared source.
+
+The app labels this origin **Sampled-frame AI description** and displays capture date, cited sample times and source link in record details. Chat receives the same limited scope. Pattern grouping reads descriptions; a captured description does not turn that grouping into direct footage/audio analysis or prove an emerging format.
+
 ## Synthetic capacity benchmark
 
 Use an explicitly separate, empty database:

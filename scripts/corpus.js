@@ -5,6 +5,7 @@ import {parseArgs} from 'node:util';
 import {performance} from 'node:perf_hooks';
 import {openCorpus,DEFAULT_CORPUS_PATH,collectCreatorHandles} from '../lib/corpus.js';
 import {normalizePlayerMetadataDelta} from '../lib/player-metadata.js';
+import {normalizeVisualEvidence} from '../public/engine.js';
 
 const usage=`OpenReel local corpus (Node 24+)
   node scripts/corpus.js init [--db data/corpus.sqlite]
@@ -13,6 +14,7 @@ const usage=`OpenReel local corpus (Node 24+)
   node scripts/corpus.js stats [--db path]
   node scripts/corpus.js collect-profiles handles.txt [--db path]
   node scripts/corpus.js apply-player-metadata deltas.json --db path
+  node scripts/corpus.js apply-video-evidence deltas.json --db path
   node scripts/corpus.js benchmark --db data/synthetic-benchmark.sqlite [--count 150000]
 Search filters: --school text --location text --min-followers N --max-followers N --email-only
 Default DB: ${DEFAULT_CORPUS_PATH}
@@ -26,14 +28,25 @@ try{
  const {values,positionals}=parseArgs({allowPositionals:true,options:{db:{type:'string'},kind:{type:'string'},source:{type:'string'},limit:{type:'string'},offset:{type:'string'},count:{type:'string'},school:{type:'string'},location:{type:'string'},'min-followers':{type:'string'},'max-followers':{type:'string'},'email-only':{type:'boolean'},help:{type:'boolean',short:'h'}}});
  if(values.help){console.log(usage);}else{
   const [command,...args]=positionals;
-  if(!['init','import','search','stats','collect-profiles','apply-player-metadata','benchmark'].includes(command))throw new Error(`Choose a corpus command.\n${usage}`);
-  if(['import','collect-profiles','apply-player-metadata'].includes(command)&&args.length!==1)throw new Error(`${command} requires one input file.`);
+  if(!['init','import','search','stats','collect-profiles','apply-player-metadata','apply-video-evidence','benchmark'].includes(command))throw new Error(`Choose a corpus command.\n${usage}`);
+  if(['import','collect-profiles','apply-player-metadata','apply-video-evidence'].includes(command)&&args.length!==1)throw new Error(`${command} requires one input file.`);
   if(['init','stats','benchmark'].includes(command)&&args.length)throw new Error(`${command} takes no positional file.`);
   if(command==='benchmark'&&!values.db)throw new Error('Synthetic benchmark requires an explicit --db path, separate from your real corpus.');
   if(command==='apply-player-metadata'&&!values.db?.trim())throw new Error('Player metadata apply requires an explicit --db path.');
   const count=Number(values.count??150000);
   if(command==='benchmark'&&(!Number.isSafeInteger(count)||count<1||count>10000000))throw new Error('Benchmark count must be a positive integer up to 10000000.');
   let input;
+  if(command==='apply-video-evidence'){
+   if(!values.db?.trim())throw new Error('Visual evidence apply requires an explicit --db path.');
+   if(statSync(args[0]).size>2*1024*1024)throw new Error('Visual evidence input exceeds 2 MiB.');
+   const parsed=JSON.parse(readFileSync(args[0],'utf8').replace(/^\uFEFF/,''));input=Array.isArray(parsed)?parsed:parsed?.deltas;
+   if(!Array.isArray(input)||input.length<1||input.length>8)throw new Error('Visual evidence apply requires 1–8 deltas.');
+   const ids=new Set();for(const delta of input){
+    if(!delta||typeof delta!=='object'||Array.isArray(delta)||Object.keys(delta).length!==3||!['recordId','visualDescription','visualEvidence'].every(k=>Object.hasOwn(delta,k))||!/^tiktok-\d{1,30}$/.test(delta.recordId)||ids.has(delta.recordId)||typeof delta.visualDescription!=='string'||delta.visualDescription.trim().length<20||delta.visualDescription.length>4000)throw new Error('Invalid or duplicate visual evidence delta.');
+    ids.add(delta.recordId);normalizeVisualEvidence(delta.visualEvidence,{id:delta.recordId,demo:false,visualDescription:delta.visualDescription,descriptionSource:'openreel-vision'});
+   }
+   if(!statSync(values.db).isFile())throw new Error('Visual evidence apply requires an existing database file.');
+  }
   if(command==='apply-player-metadata'){
    if(statSync(args[0]).size>2*1024*1024)throw new Error('Player metadata input exceeds 2 MiB.');
    const parsed=JSON.parse(readFileSync(args[0],'utf8').replace(/^\uFEFF/,''));
@@ -62,6 +75,7 @@ try{
    if(command==='search')result={query:args.join(' '),records:db.search(args.join(' '),{kind:values.kind??'real',limit:Number(values.limit??20),offset:Number(values.offset??0),...(values.school?{school:values.school}:{}),...(values.location?{location:values.location}:{}),...(values['min-followers']!==undefined?{minFollowers:Number(values['min-followers'])}:{}),...(values['max-followers']!==undefined?{maxFollowers:Number(values['max-followers'])}:{}),emailOnly:values['email-only']??false}),stats:db.stats()};
    if(command==='collect-profiles')result={...await collectCreatorHandles(db,input),stats:db.stats()};
    if(command==='apply-player-metadata')result=db.applyPlayerMetadata(input);
+   if(command==='apply-video-evidence')result=db.applyVisualEvidence(input);
    if(command==='benchmark'){
     if(db.stats().total!==0)throw new Error('Use an empty separate database for a synthetic benchmark.');
     const started=performance.now();const imported=db.upsert(benchmarkRows(count),{kind:'synthetic',source:'generated-capacity-benchmark'});const importMilliseconds=performance.now()-started;

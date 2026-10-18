@@ -75,6 +75,32 @@ export function retainPostingDate(previous,current){
   return {...current,postedAt:evidence.postedAt,postingEvidence:evidence};
 }
 
+/** A citation for sampled visual interpretation, never raw footage or an audio claim. */
+export function normalizeVisualEvidence(value,record){
+  const bad=()=>new Error('Invalid sampled-frame visual evidence.');
+  const shape=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
+  if(!shape(value,['sourceType','sourceUrl','creatorId','observedAt','duration','frames'])||value.sourceType!=='tiktok-public-player-frames'||record.demo!==false||record.descriptionSource!=='openreel-vision'||!record.visualDescription)throw bad();
+  let url;try{url=new URL(value.sourceUrl);}catch{throw bad();}
+  const id=url.pathname.match(/^\/@[a-z0-9_][a-z0-9_.]{0,79}\/video\/(\d{1,30})$/i)?.[1];
+  if(url.protocol!=='https:'||url.hostname!=='www.tiktok.com'||url.username||url.password||url.port||url.search||url.hash||url.href!==value.sourceUrl||record.id!==`tiktok-${id}`||!id||typeof value.creatorId!=='string'||!/^\d{1,30}$/.test(value.creatorId)||record.creatorId&&record.creatorId!==value.creatorId)throw bad();
+  if(typeof value.observedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value.observedAt)||!Number.isFinite(Date.parse(value.observedAt))||new Date(value.observedAt).toISOString()!==value.observedAt||Date.parse(value.observedAt)<946684800000||record.postedAt&&Date.parse(record.postedAt)>Date.parse(value.observedAt)+300000)throw bad();
+  if(!Number.isFinite(value.duration)||value.duration<=0||value.duration>600||!Array.isArray(value.frames)||value.frames.length<1||value.frames.length>8)throw bad();
+  let prior=-1;const frames=value.frames.map(frame=>{if(!shape(frame,['timestamp','sha256'])||!Number.isFinite(frame.timestamp)||frame.timestamp<0||frame.timestamp>value.duration||frame.timestamp<=prior||typeof frame.sha256!=='string'||!/^[a-f0-9]{64}$/.test(frame.sha256))throw bad();prior=frame.timestamp;return {timestamp:frame.timestamp,sha256:frame.sha256};});
+  return {sourceType:value.sourceType,sourceUrl:value.sourceUrl,creatorId:value.creatorId,observedAt:value.observedAt,duration:value.duration,frames};
+}
+export function hasVisualDescriptionEvidence(record){
+  if(!record||typeof record.visualDescription!=='string'||!record.visualDescription.trim())return false;
+  if(['upstream-model','user-supplied','provider-observed'].includes(record.descriptionSource))return true;
+  if(record.descriptionSource!=='openreel-vision')return false;
+  try{normalizeVisualEvidence(record.visualEvidence,record);return true;}catch{return false;}
+}
+/** Preserve a historical interpretation with its original capture, never stale metrics. */
+export function retainVisualEvidence(previous,current){
+  if(!previous||!current||previous.demo!==false||current.demo!==false||previous.synthetic||current.synthetic||previous.id!==current.id||current.visualDescription||previous.creatorId&&current.creatorId&&previous.creatorId!==current.creatorId||previous.descriptionSource!=='openreel-vision')return current;
+  let visualEvidence;try{visualEvidence=normalizeVisualEvidence(previous.visualEvidence,{...current,descriptionSource:previous.descriptionSource,visualDescription:previous.visualDescription});}catch{return current;}
+  return {...current,visualDescription:previous.visualDescription,descriptionSource:previous.descriptionSource,visualEvidence};
+}
+
 /** Rejects a whole import on any malformed row; never mutates the original input. */
 export function normalizeRecords(input) {
   if (!Array.isArray(input) || input.length === 0 || input.length > MAX_RECORDS) throw new Error(`Import must contain 1–${MAX_RECORDS} records.`);
@@ -94,7 +120,7 @@ export function normalizeRecords(input) {
     if (result.handle&&!/^@?[a-z0-9_.-]{1,80}$/i.test(result.handle)||!result.handle&&!result.creatorId) throw new Error(`Record ${index + 1} needs a valid creator handle or numeric creator ID.`);
     if(result.handle)result.handle = result.handle.startsWith('@') ? result.handle : `@${result.handle}`;
     result.id ||= `${result.handle?result.handle.slice(1):'creator-'+result.creatorId}-${index + 1}`;
-    if(result.visualDescription&&!['upstream-model','user-supplied','provider-observed'].includes(result.descriptionSource))throw new Error(`Record ${index+1} needs a description source.`);
+    if(result.visualDescription&&!['upstream-model','user-supplied','provider-observed','openreel-vision'].includes(result.descriptionSource))throw new Error(`Record ${index+1} needs a description source.`);
     if (ids.has(result.id)) throw new Error(`Duplicate record id: ${result.id}`);
     ids.add(result.id);
     for (const field of METRIC_FIELDS) result[field] = count(row[field]);
@@ -107,6 +133,7 @@ export function normalizeRecords(input) {
     if (result.email && !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(result.email)) throw new Error(`Record ${index + 1} has an invalid email.`);
     if (result.postedAt && !Number.isFinite(Date.parse(result.postedAt))) throw new Error(`Record ${index + 1} has an invalid postedAt date.`);
     result.demo = row.demo === true || row.demo === 'true';
+    if(row.visualEvidence!==undefined||result.descriptionSource==='openreel-vision')result.visualEvidence=normalizeVisualEvidence(row.visualEvidence,result);
     if(row.postingEvidence!==undefined)result.postingEvidence=postingDateEvidence(row.postingEvidence,result);
     if(row.profileEvidence!==undefined){
       const evidence=row.profileEvidence;
@@ -270,10 +297,9 @@ export function getTrends(records) {
     {format:'Get ready with me',label:/^(?:grwm|get ready with me)$/i,phrase:/\b(?:grwm|get ready with me)\b/i},
     {format:'Day in the life',label:/^day[- ]in[- ](?:the[- ]|my[- ]|a[- ])?life$/i,phrase:/\bday[- ]in[- ](?:the[- ]|my[- ]|a[- ])?life\b/i}
   ];
-  const origins=new Set(['upstream-model','user-supplied','provider-observed']);
   const evidenceFor=record=>{
     if(record.format?.trim())return [{format:patterns.find(p=>p.label.test(record.format.trim()))?.format||record.format.trim(),field:'format',excerpt:record.format}];
-    if(!record.visualDescription||!origins.has(record.descriptionSource))return [];
+    if(!hasVisualDescriptionEvidence(record))return [];
     const evidence=[];
     for(const pattern of patterns){
       for(const sentence of record.visualDescription.split(/(?<=[.!?])\s+|[;\n]+/)){
@@ -395,7 +421,7 @@ export function research(records, question, history = [], {reference,sourceQuery
     sources = [...new Map(trends.flatMap(trend=>trend.records).map(record=>[record.id,record])).values()];
     summary = trends.length ? `${trends.length} recurring format${trends.length === 1 ? '' : 's'} appear across multiple creators in the matching records. Groups use supplied format labels or explicit phrases in attributed visual descriptions. These descriptive corpus patterns do not establish current emergence or platform-wide growth.` : 'There is not enough matching format evidence across at least two distinct creators. Add supplied format labels or explicit, attributed visual descriptions; a caption mention alone is insufficient.';
     for(const trend of trends.slice(0,6)){
-      const basis=trend.sourceGroups.map(source=>`${source.count} ${source.field==='format'?'supplied format label'+(source.count===1?'':'s'):source.descriptionSource==='upstream-model'?'upstream AI-derived visual description'+(source.count===1?'':'s'):source.descriptionSource+' visual description'+(source.count===1?'':'s')}`).join('; ');
+      const basis=trend.sourceGroups.map(source=>`${source.count} ${source.field==='format'?'supplied format label'+(source.count===1?'':'s'):source.descriptionSource==='upstream-model'?'upstream AI-derived visual description'+(source.count===1?'':'s'):source.descriptionSource==='openreel-vision'?'sampled-frame AI description'+(source.count===1?'':'s'):source.descriptionSource+' visual description'+(source.count===1?'':'s')}`).join('; ');
       const window=trend.dateWindow,dateText=window.knownRecords?`Known supplied posting dates: ${window.start} through ${window.end} (${window.knownRecords} dated; ${window.unknownRecords} unknown dates; ${window.unknownTimezoneRecords} unknown timezones).`:'Posting dates are unavailable for these records.';
       sections.push({heading:trend.format,sourceIds:trend.records.map(record=>record.id),text:`${trend.count} videos from ${trend.creators.length} creators. Evidence: ${basis}. ${dateText} ${trend.avgViews===null?'View metrics are unavailable.':`${trend.measuredVideos} measured videos average ${trend.avgViews.toLocaleString('en-US')} views.`} ${trend.avgEngagementRate===null?'Engagement metrics are unavailable.':`Average engagement per view is ${trend.avgEngagementRate}%.`} ${window.limit} Descriptive averages do not show that the format caused performance.`});
     }

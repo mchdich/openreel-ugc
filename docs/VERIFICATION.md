@@ -1,6 +1,6 @@
 # Verification record
 
-Updated October 17, 2026 for the [full-parity continuation](superpowers/specs/2026-10-17-parity-continuation.md). **Full 1:1 parity has not been established.** This record separates real observations, controlled tests and required missing evidence. It does not freeze a final test count while integration is changing.
+Updated October 18, 2026 for the [full-parity continuation](superpowers/specs/2026-10-17-parity-continuation.md). **Full 1:1 parity has not been established.** This record separates real observations, controlled tests and required missing evidence. It does not freeze a final test count while integration is changing.
 
 ## Automated checks
 
@@ -254,3 +254,7 @@ Those two known-profile answers initially used deterministic fallback. A transpa
 The final primary-app browser **Find coffee creators** request returned **AI synthesis for four actual creators in 7.879 seconds**, with all four avatars loaded. One failed profile was explicitly reported and post inspection was skipped, so this run adds no new dates. Both discovery and chat returned HTTP 200; reload retained the answer, mobile had no overflow and there were no page errors. The earlier failed six-check QA expectation is preserved rather than relabeled as a successful metadata request. Separately, restored actual deterministic answers showed **Live research** after switching the composer to Library and reloading. Deterministic source labels now bind each saved answer, with conservative legacy inference.
 
 A final native read matched all twenty-four primary dates/citations and the latest response's source/count fields. The actual current-week Corpus coffee comparison now has **three current and five prior** dated records; no eligible recurring format/emergence group qualifies. More dated metadata is useful evidence, not a claim of current emerging audiovisual behavior. Generated Worker/D1 and native fixture tests separately exercise six-to-eight date accumulation, hidden internal inspected rows, a maximum 36-record persistence union, trust failures and bounded query counts. The full local suite passes 409 tests. These fixtures do not count as acquired videos or real AI calls.
+
+## Sampled-source visual acquisition (1.12.0)
+
+The optional public-player/vision workflow and its actual failures/corrections are recorded in [DEMO_VERIFICATION.md](DEMO_VERIFICATION.md#sampled-public-source-visuals-1120). Three existing real rows gained reviewed descriptions with source/time/hash receipts and no other corpus changes. Real app analysis and follow-up returned AI synthesis in 4.170/3.399 seconds; corrected UI verification retained the actual responses, checked capture citations, reload and mobile behavior. The dated HTTP comparison found no qualifying emerging group. All 427 Node tests passed; exact-commit CI/archive evidence accompanies publication. These results advance acquisition and evidence transparency without establishing full parity or fully automatic visual accuracy.

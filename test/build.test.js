@@ -4,6 +4,25 @@ import {execFileSync} from 'node:child_process';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 
+test('generated Worker retains sampled visual citations through D1 search, pattern sampling and dated refresh',async()=>{
+ const {DatabaseSync}=await import('node:sqlite'),db=new DatabaseSync(':memory:');db.exec(await readFile(new URL('../drizzle/0000_corpus.sql',import.meta.url),'utf8'));
+ const binding={prepare(sql){return {bind(...p){return {all:async()=>({success:true,results:db.prepare(sql).all(...p)}),first:async()=>db.prepare(sql).get(...p)||null};},all:async()=>({success:true,results:db.prepare(sql).all()})};},batch:async statements=>Promise.all(statements.map(s=>s.all()))};
+ const oldFetch=globalThis.fetch;
+ try{
+  // Build explicitly: this test must exercise the generated module, including all new bindings.
+  execFileSync(process.execPath,['scripts/build.js'],{cwd:fileURLToPath(new URL('../',import.meta.url)),stdio:'pipe'});
+  const {default:worker}=await import(new URL('../dist/server/index.js',import.meta.url)),{openWorkerCorpus}=await import('../lib/corpus-worker.js'),corpus=openWorkerCorpus(binding);
+  const rows=[0,1].map(i=>({id:`tiktok-${33001+i}`,handle:`@sampled_${i}`,creatorId:String(34000+i),url:`https://www.tiktok.com/@sampled_${i}/video/${33001+i}`,caption:'Coffee fixture',transcript:'Original transcript',sourceType:'tiktok-public-post',fetchedAt:'2024-10-05T00:00:00.000Z',postedAt:'2024-10-04T00:00:00.000Z',demo:false,visualDescription:'The samples show a step-by-step tutorial with close-up shots of coffee preparation on a dark table.',descriptionSource:'openreel-vision',visualEvidence:{sourceType:'tiktok-public-player-frames',sourceUrl:`https://www.tiktok.com/@sampled_${i}/video/${33001+i}`,creatorId:String(34000+i),observedAt:'2024-10-05T01:00:00.000Z',duration:10,frames:[{timestamp:.04,sha256:'a'.repeat(64)},{timestamp:6,sha256:'b'.repeat(64)}]}}));
+  await corpus.upsert(rows,{kind:'real',source:'controlled independent capture',verification:'provider-observed'});
+  const request=(path,body)=>worker.fetch(new Request('https://sampled-build.example'+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),{DB:binding,OPENREEL_POST_METADATA:'true'});
+  const search=await request('/api/corpus/search',{query:'coffee'});assert.equal(search.status,200);assert.deepEqual((await search.json()).records[0].visualEvidence,rows[0].visualEvidence);
+  const sample=await request('/api/corpus/patterns',{query:'coffee'});assert.equal(sample.status,200);assert.equal((await sample.json()).records.filter(r=>r.descriptionSource==='openreel-vision').length,2);
+  globalThis.fetch=async url=>{assert.equal(url,rows[0].url);return new Response('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({__DEFAULT_SCOPE__:{'webapp.video-detail':{statusCode:0,itemInfo:{itemStruct:{id:'33001',privateItem:false,createTime:'1728000000',desc:'Fresh coffee fixture',author:{id:'34000',uniqueId:'sampled_0',privateAccount:false},stats:{playCount:0}}}}}})+'</script>',{headers:{'content-type':'text/html'}});};
+  const refreshed=await request('/api/videos/import',{url:rows[0].url});assert.equal(refreshed.status,200);const record=(await refreshed.json()).record;assert.equal(record.views,0);assert.equal(record.descriptionSource,'openreel-vision');assert.deepEqual(record.visualEvidence,rows[0].visualEvidence);assert.equal(record.transcript,'');
+  const saved=await corpus.get(rows[0].id);assert.deepEqual(saved.visualEvidence,rows[0].visualEvidence);assert.equal(saved.corpusVerification,'provider-observed');assert.equal((await corpus.stats()).total,2);assert.doesNotMatch(JSON.stringify(saved),/data:image|base64/);
+ }finally{globalThis.fetch=oldFetch;db.close();}
+});
+
 test('portable Worker serves the exact client and handles research without Node dependencies',async()=>{
   const root=new URL('../',import.meta.url);
   execFileSync(process.execPath,['scripts/build.js'],{cwd:fileURLToPath(root),stdio:'pipe'});

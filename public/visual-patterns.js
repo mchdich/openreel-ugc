@@ -1,15 +1,15 @@
-import {creatorKey,summarizePatternGroup} from './engine.js';
+import {creatorKey,summarizePatternGroup,hasVisualDescriptionEvidence} from './engine.js';
 import {visualFeatures,visualFeatureEvidence} from './visual-facts.js';
 const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
 const shape=(value,keys)=>object(value)&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
-const origins=new Set(['upstream-model','user-supplied','provider-observed']);
+
 const unsupported=/https?:\/\/|\b[^\s@]+@[^\s@]+\.[a-z]+|@[a-z0-9_]|\b(?:viral|trending|emerging|retention|engagement|this week|today|right now|fast[- ]growing|high[- ]performing)\b|\b\d[\d,.]*\s*(?:views|followers|likes|shares)\b/i;
 const plain=(value,min,max)=>typeof value==='string'&&value.trim().length>=min&&value.length<=max&&!unsupported.test(value);
 
 /** Exact quotes establish source binding; pattern semantics remain AI proposals. */
 export function groundVisualPatterns(records,proposals){
  if(!Array.isArray(records)||records.length>100||!Array.isArray(proposals)||proposals.length>3)throw new Error('Invalid visual-pattern proposals.');
- const sources=new Map(records.filter(r=>r&&typeof r.id==='string'&&r.demo===false&&!r.synthetic&&origins.has(r.descriptionSource)&&typeof r.visualDescription==='string'&&creatorKey(r)).map(r=>[r.id,r]));
+ const sources=new Map(records.filter(r=>r&&typeof r.id==='string'&&r.demo===false&&!r.synthetic&&hasVisualDescriptionEvidence(r)&&typeof r.visualDescription==='string'&&creatorKey(r)).map(r=>[r.id,r]));
  const patterns=[],accepted=[],seen=new Set();let rejected=0;
  for(const proposal of proposals){
   try{
