@@ -1,4 +1,4 @@
-# Local demo verification — 1.7.1
+# Local demo verification — 1.8.0
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text and vision use GPT-5.4 mini; transcription uses whisper-1. No provider responses were substituted in the browser acceptance runs.
 
@@ -11,7 +11,19 @@ The tested research, writing, creator-filter and upload paths work. **Full equiv
 3. Start another Corpus chat: **Find UCLA creators with at least 1,000 followers and email in bio**. Two profiles matched; both included public-bio school self-descriptions and email evidence. This includes alumni descriptions and does not verify current enrollment.
 4. Attach a video and ask: **Why did my video only get 200 views? Give me three concrete changes and a stronger opening.** The browser extracts up to eight sampled frames and available audio. The model can suggest edits; it cannot establish why a reported metric occurred. Actual upload and natural-footage results are recorded below.
 5. Choose Live search and ask: **Find coffee creators**. With optional web discovery enabled locally, the final actual flow returned @jameshoffmanncoffee, @morgandrinkscoffee and @ryantagcoffee in 7.1 seconds. Start another Live chat: **Find NYU creators with at least 1,500 followers and public emails**. It returned @lizzie.crane with 3,858 observed followers and a public-bio email in 6.2 seconds. Both discovery/chat endpoints returned HTTP 200, all four table avatars loaded and the latest result survived reload. Coverage is a bounded set of checked profiles, not all TikTok.
-6. Open **Trends → Corpus**. The verified default browse now displays seven recurring formats with real source previews. Open a card to inspect its records, provenance and dates; these examples are archival, not emerging trends today.
+6. Open **Trends → Corpus**. The verified default browse now displays seven recurring formats with real source previews. Open a card to inspect its records, provenance and dates. Click **Detect visual patterns** for specific shared component proposals; the verified actual runs are recorded below. These examples are archival, not emerging trends today.
+
+## Specific visual-pattern detection (1.8.0)
+
+The actual browser's explicit **Trends → Corpus → Detect visual patterns** flow returned two specific proposals in **8.284 seconds**: split-screen clips with on-screen date labels across three creator identities, and mirror framing with an explicitly held smartphone and multiple viewing angles across two identities. It selected 100 real records from 211 candidates, then analyzed 60 distinct attributed descriptions. The nonempty **split screen** query analyzed 40 descriptions and returned the supported split/date group across three creators in **7.091 seconds**. Both normal app requests returned HTTP 200 using two real configured model calls each; no provider responses were substituted. These are measured runs, not latency guarantees.
+
+All displayed components were independently checked against every retained source description. Dates printed inside clips were not treated as posting dates. Each group exposed its actual 2024 posting window, source links, metrics and upstream-model provenance. All six component excerpts for each first group appeared in the source modal; the query case loaded two available fan covers and default case loaded two. Unavailable imagery remained neutral. Entry and typing made zero detection requests; toggling Formats/Visual patterns reused the same result without a second API request. Both desktop and 390px mobile checks had no page errors or horizontal overflow.
+
+Earlier actual generations were rejected during review: exact quotes alone still allowed unsupported facing-camera, reaction and held-phone claims. A second model adjudication improved results but did not reliably eliminate implication. The final shared gate uses a composable 19-feature predicate catalog and builds displayed wording from accepted components. Every member must explicitly support every retained component; the mirror member lacking a phone is excluded. Negation/uncertainty inside regex matches, virtual-filter try-ons, an untouched unboxing knife, book-mentioned people, gaze direction, separated phones and candle-shaped lamps have reproduced negative regressions. This is a conservative bounded lexical check, not a general semantic verifier or independent confirmation of upstream descriptions.
+
+The model action sends at most 60 descriptions × 1,800 characters, with up to two strict calls sharing one 45-second deadline, at most 6,000 requested output tokens and 64 KiB reply per call. Failed review never falls back to initial proposals. Default visual sampling is separate from broad-format grouping and uses up to 220 candidates; topic queries preserve their existing filters. No generated labels, dates or metrics are written to the corpus. Current emergence, arbitrary new visual patterns and direct audiovisual corpus recognition remain unproved.
+Across three separately bounded ordinary public-player runs, 13 navigations resolved nine metadata-only deltas for existing archival records. Four unavailable posts remained unchanged. Independent native before/after hashes and counts verified protected text, dates, metrics, numeric identities, licenses, classification and ingestion provenance remained identical. The store stayed at 154,428 real records / 4,624 creator identities / 266 provider-observed records, with zero example/synthetic/unverified rows. These updates supply source identities/previews and add no videos or current-trend evidence. No media files were saved. Signed source imagery may expire.
+
 
 ## Web-assisted creator discovery (1.7.0)
 
@@ -77,7 +89,7 @@ The final speech-bearing upload repeat returned HTTP 200 for transcription, crit
 
 ## Final checks
 
-- Node: 339 tests passed, zero failures, including web discovery, relevance/compound filters, error boundaries, format coverage, selection provenance and generated Worker/D1 retrieval.
+- Node: 366 tests passed, zero failures, including web discovery, relevance/compound filters, error boundaries, format coverage, selection provenance and generated Worker/D1 retrieval.
 - Python: 17 passed, one optional test skipped.
 - Portable Worker build completed; publication of this revision to Sites was not requested.
 - The complete browser upload test returned HTTP 200 for transcription and both vision turns. Its first answer arrived about 20.2 seconds after file attachment started.

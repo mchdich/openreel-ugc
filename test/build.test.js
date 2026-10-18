@@ -48,5 +48,13 @@ test('portable Worker binds its hosted corpus through D1 without runtime schema 
       const result=await worker.fetch(new Request('https://d1-build.example/api/corpus/search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({query})}),{DB:binding});
       assert.equal(result.status,200);assert.equal((await result.json()).records.length,expected,query);
     }
+    const description='The video shows a split-screen layout with two people beside one another. A date sticker appears at the bottom of both scenes.';
+    await openWorkerCorpus(binding).upsert([0,1].map(i=>({id:`visual-build-${i}`,handle:`@visual_${i}`,creatorId:String(5000+i),caption:'Split screen fixture',visualDescription:description,descriptionSource:'user-supplied',url:`https://www.tiktok.com/@visual_${i}/video/${9000+i}`,sourceType:'test-fixture',fetchedAt:'2024-01-01T00:00:00Z',demo:false})),{kind:'real',source:'controlled visual fixture'});
+    const initialFetch=globalThis.fetch,beforeDetection=writes;let calls=0;
+    try{
+      globalThis.fetch=async(url,init)=>{calls++;const review=JSON.parse(init.body).response_format.json_schema.name==='visual_pattern_review';return new Response(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({patterns:[{...(review?{patternIndex:0}:{}),title:'Split-screen clips with on-screen date labels',description:'Paired scenes share a split-screen layout and visible date stickers.',components:[{featureId:'split-screen',label:'Split-screen paired layout',evidence:[0,1].map(i=>({recordId:`visual-build-${i}`,quote:'The video shows a split-screen layout with two people beside one another.'}))},{featureId:'date-overlay',label:'A visible date sticker',evidence:[0,1].map(i=>({recordId:`visual-build-${i}`,quote:'A date sticker appears at the bottom of both scenes.'}))}]}]})}}]}),{headers:{'content-type':'application/json'}});};
+      const result=await worker.fetch(new Request('https://d1-build.example/api/corpus/visual-patterns',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer owner-test-token'},body:JSON.stringify({query:'split screen'})}),{DB:binding,OPENAI_API_KEY:'provider-test-secret',OPENAI_MODEL:'gpt-5.4-mini',OPENREEL_API_TOKEN:'owner-test-token'});
+      assert.equal(result.status,200);const body=await result.json();assert.equal(body.patterns.length,1);assert.equal(body.modelCalls,2);assert.equal(calls,2);assert.equal(writes,beforeDetection);
+    }finally{globalThis.fetch=initialFetch;}
   }finally{db.close();}
 });

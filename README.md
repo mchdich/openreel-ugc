@@ -37,6 +37,8 @@ The portable Worker entry point is `dist/server/index.js`. Building does not pub
 
 **Discovery resilience (1.7.1):** capitalized topics such as “Find Coffee creators” retain their topic meaning. Known school requests and existing SQLite/D1 keys remain compatible. A failed official-profile batch stops further profile requests while preserving confirmed matches with a visible partial-results notice; no confirmed matches still yields an error. The actual browser repeat returned the same three coffee creators in 8.2 seconds and the NYU/contact match in 7.4 seconds despite one failed profile check in each flow. All avatars loaded and partial coverage was explicitly shown.
 
+**Specific visual patterns (1.8.0):** Trends → Corpus → **Detect visual patterns** proposes shared combinations of framing, objects and actions from a separate bounded description sample. Every retained member must match each accepted component; card wording and exact excerpts come from a composable 19-feature catalog. The detector uses up to two model calls sharing one 45-second deadline and never writes inferred formats into the corpus. Ordinary browsing/typing makes no detection call; same-query toggles reuse the in-memory result. This is attributed-description research, not direct footage inspection, open-ended visual recognition or evidence of current emergence. See [the actual browser verification](docs/DEMO_VERIFICATION.md).
+
 ## Research flows
 
 - **Library:** research imported records or the labeled fictional examples. Creator filters combine topic, school/location, follower bounds, counts, public contacts, and email-in-bio requirements. Unknown metrics cannot satisfy numeric filters.

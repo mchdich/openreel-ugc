@@ -7,7 +7,7 @@ OpenReel combines browser-local storage, an optional server corpus, configurable
 - Node 24 binds to loopback by default. Set `HOST` deliberately when network access is intended; Docker uses `0.0.0.0` inside its container.
 - Behind a TLS proxy, set the exact `OPENREEL_PUBLIC_ORIGIN`. Forwarded headers are not trusted. Explicit public-origin configuration preserves same-origin checks and disables loopback provider-auth exemptions.
 - Keep `OPENAI_API_KEY`, `APIFY_API_TOKEN` and `OPENREEL_API_TOKEN` in server/Worker secrets, outside source control, browser code, imported data, exports and screenshots.
-- Public configured model, vision, transcription and paid-discovery paths require the bearer token matching `OPENREEL_API_TOKEN`. The browser retains an entered token in memory until reload. This shared token does not isolate users or protect every corpus/import endpoint.
+- Public configured model, vision, transcription, visual-pattern detection and paid-discovery paths require the bearer token matching `OPENREEL_API_TOKEN`. The browser retains an entered token in memory until reload. This shared token does not isolate users or protect every corpus/import endpoint.
 - Protect private research with HTTPS and hosting access controls. Free creator imports and corpus reads are not an account boundary. In-process rate limiting and body limits are basic controls, not distributed abuse prevention.
 - Model base URLs and identifiers are operator configuration. Chat/vision uses `OPENAI_BASE_URL`; speech may use `OPENAI_TRANSCRIPTION_BASE_URL`. URLs reject credentials, queries and fragments; HTTP is limited to configured loopback providers. Requests reject redirects. No request-supplied URL selects a model endpoint.
 - Local models can use a nonsecret placeholder key; keep their listeners on loopback. A local CPU setup does not imply a hosted deployment has those models available.
@@ -33,6 +33,8 @@ Direct video import accepts canonical HTTPS TikTok video URLs and uses a fixed o
 Creator bio fields and metric snapshots are public-source observations, not independently verified identity or affiliation. School/location self-description retains its citation and original bio segment. Caption mentions do not establish those fields. Missing metrics remain unknown even where a numeric payload placeholder is zero.
 
 Optional Apify discovery makes one authenticated request with at most 30 results, requested maximum charge $0.25, 40-second Actor timeout and 45-second client deadline. Downloads, subtitle fetching, provider transcription/AI add-ons and automatic retries are disabled. A timeout can leave a charged run; inspect it before repeating. Tests do not establish final billing or successful paid discovery.
+
+Visual-pattern detection sends at most 60 attributed descriptions of 1,800 characters each to the configured text provider. Its two-call maximum shares a 45-second deadline and uses strict output plus a 64 KiB cap per response. It is an explicit paid action with public bearer/origin checks; browsing and typing do not trigger it. Exact source matching and a bounded predicate catalog constrain output but cannot prove that upstream descriptions match footage. There is no automatic retry or corpus write.
 
 Imported/provider text, filenames, bios, transcripts, on-screen text and model replies are untrusted data. Field/size/URL validation and escaped rendering reduce exposure. Report any path that executes source HTML, leaks credentials, bypasses fixed endpoint restrictions or promotes unavailable metrics into measured evidence.
 

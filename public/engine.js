@@ -220,6 +220,25 @@ const engagementKnown=record=>['views','likes','comments','shares'].every(field=
 const rounded = value => Math.round(value * 100) / 100;
 const average = values => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 
+function postingWindow(rows){
+    const dates=[];let unknownTimezoneRecords=0;
+    for(const record of rows){
+      const raw=String(record.postedAt||''),date=raw.match(/^(\d{4}-\d{2}-\d{2})(?:[T ]|$)/)?.[1];
+      if(!date||!Number.isFinite(Date.parse(raw))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)continue;
+      dates.push(date);if(!/[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw))unknownTimezoneRecords++;
+    }
+    dates.sort();return {start:dates[0]??null,end:dates.at(-1)??null,knownRecords:dates.length,unknownRecords:rows.length-dates.length,unknownTimezoneRecords,limit:'Supplied posting calendar dates only; unknown dates are omitted and timezones may be unknown. This window does not establish current emergence or growth.'};
+  }
+
+export function summarizePatternGroup(group){
+    const sourceGroups=new Map();for(const evidence of group.evidence){const key=evidence.field+':'+(evidence.descriptionSource||'');if(!sourceGroups.has(key))sourceGroups.set(key,{field:evidence.field,...(evidence.descriptionSource?{descriptionSource:evidence.descriptionSource}:{}),count:0,sourceIds:[]});const source=sourceGroups.get(key);if(!source.sourceIds.includes(evidence.recordId)){source.count++;source.sourceIds.push(evidence.recordId);}}
+    const measured=group.records.filter(r=>metricKnown(r,'views')&&Number.isFinite(r.views)&&r.views>=0);
+    const measuredEngagement=group.records.filter(r=>engagementKnown(r)&&['views','likes','comments','shares'].every(f=>Number.isFinite(r[f])&&r[f]>=0)&&r.views>0);
+    return {...group,count:group.records.length,creators:[...new Set(group.records.map(creatorKey))],sourceGroups:[...sourceGroups.values()],dateWindow:postingWindow(group.records),
+      avgViews:measured.length?Math.round(average(measured.map(r=>r.views))):null,avgEngagementRate:measuredEngagement.length?rounded(average(measuredEngagement.map(engagement))):null,measuredVideos:measured.length};
+
+}
+
 /** Supplied labels or explicit described formats need two distinct creator identities. */
 export function getTrends(records) {
   const patterns=[
@@ -253,15 +272,6 @@ export function getTrends(records) {
     }
     return evidence;
   };
-  const postingWindow=rows=>{
-    const dates=[];let unknownTimezoneRecords=0;
-    for(const record of rows){
-      const raw=String(record.postedAt||''),date=raw.match(/^(\d{4}-\d{2}-\d{2})(?:[T ]|$)/)?.[1];
-      if(!date||!Number.isFinite(Date.parse(raw))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)continue;
-      dates.push(date);if(!/[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw))unknownTimezoneRecords++;
-    }
-    dates.sort();return {start:dates[0]??null,end:dates.at(-1)??null,knownRecords:dates.length,unknownRecords:rows.length-dates.length,unknownTimezoneRecords,limit:'Supplied posting calendar dates only; unknown dates are omitted and timezones may be unknown. This window does not establish current emergence or growth.'};
-  };
   const groups = new Map(),seen=new Set();
   for (const record of records) {
     if(!record||typeof record!=='object')continue;
@@ -272,13 +282,7 @@ export function getTrends(records) {
       const group=groups.get(key);group.records.push(record);group.evidence.push({recordId:record.id,creatorKey:identity,...Object.fromEntries(Object.entries(evidence).filter(([key])=>key!=='format'))});
     }
   }
-  return [...groups.values()].map(group=>{
-    const sourceGroups=new Map();for(const evidence of group.evidence){const key=evidence.field+':'+(evidence.descriptionSource||'');if(!sourceGroups.has(key))sourceGroups.set(key,{field:evidence.field,...(evidence.descriptionSource?{descriptionSource:evidence.descriptionSource}:{}),count:0,sourceIds:[]});const source=sourceGroups.get(key);source.count++;source.sourceIds.push(evidence.recordId);}
-    const measured=group.records.filter(r=>metricKnown(r,'views')&&Number.isFinite(r.views)&&r.views>=0);
-    const measuredEngagement=group.records.filter(r=>engagementKnown(r)&&['views','likes','comments','shares'].every(f=>Number.isFinite(r[f])&&r[f]>=0)&&r.views>0);
-    return {...group,count:group.records.length,creators:[...new Set(group.records.map(creatorKey))],sourceGroups:[...sourceGroups.values()],dateWindow:postingWindow(group.records),
-      avgViews:measured.length?Math.round(average(measured.map(r=>r.views))):null,avgEngagementRate:measuredEngagement.length?rounded(average(measuredEngagement.map(engagement))):null,measuredVideos:measured.length};
-  }).filter(group=>group.creators.length>=2).sort((a,b)=>(b.avgViews??-1)-(a.avgViews??-1)||b.creators.length-a.creators.length||a.format.localeCompare(b.format));
+  return [...groups.values()].map(summarizePatternGroup).filter(group=>group.creators.length>=2).sort((a,b)=>(b.avgViews??-1)-(a.avgViews??-1)||b.creators.length-a.creators.length||a.format.localeCompare(b.format));
 }
 
 function statistics(all, matches) {

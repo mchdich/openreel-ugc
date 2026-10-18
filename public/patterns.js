@@ -1,4 +1,5 @@
 import {normalizeRecords,creatorKey} from './engine.js';
+import {groundVisualPatterns} from './visual-patterns.js';
 
 /** Prefer supplied HTTPS covers, keeping one original record per preview creator. */
 export function patternPreviewRecords(records){
@@ -15,6 +16,10 @@ export function patternPreviewRecords(records){
 export async function fetchPatternSample(request,query='',signal){
   if(typeof query!=='string'||query.length>1000)throw new Error('Corpus search supports up to 1,000 characters.');
   const value=await request('/api/corpus/patterns',{query:query.trim()},signal);
+  return normalizePatternSample(value);
+}
+
+function normalizePatternSample(value){
   const records=value?.records,corpus=value?.corpus,real=corpus?.byKind?.real;
   if(!corpus||!Number.isSafeInteger(corpus.total)||corpus.total<0||!Number.isSafeInteger(real)||real<0||real>corpus.total)throw new Error('The corpus returned invalid record counts.');
   for(const count of Object.values(corpus.byKind))if(!Number.isSafeInteger(count)||count<0||count>corpus.total)throw new Error('The corpus returned invalid record counts.');
@@ -24,7 +29,7 @@ export async function fetchPatternSample(request,query='',signal){
   let selection=null;
   if(value.selection!==undefined){
     const item=value.selection;
-    if(!item||!['query','format-stratified'].includes(item.method)||!Number.isSafeInteger(item.queryCount)||item.queryCount<1||item.queryCount>8||!Number.isSafeInteger(item.candidateRecords)||item.candidateRecords<records.length||item.candidateRecords>310)throw new Error('The corpus returned invalid sample selection details.');
+    if(!item||!['query','format-stratified','visual-coverage'].includes(item.method)||!Number.isSafeInteger(item.queryCount)||item.queryCount<1||item.queryCount>8||!Number.isSafeInteger(item.candidateRecords)||item.candidateRecords<records.length||item.candidateRecords>310)throw new Error('The corpus returned invalid sample selection details.');
     selection={method:item.method,queryCount:item.queryCount,candidateRecords:item.candidateRecords};
   }
   return {records:records.length?normalizeRecords(records):[],corpus:{...corpus,byKind:{...corpus.byKind}},selection};
@@ -32,14 +37,15 @@ export async function fetchPatternSample(request,query='',signal){
 
 /** Own request lifetimes so a delayed result can never replace a newer query/source. */
 export function createPatternController({request,onChange=()=>{},debounceMs=300,requestTimeoutMs=25000,source}={}){
-  let state={source:source==='corpus'?'corpus':'library',explicit:source==='corpus'||source==='library',available:false,query:'',status:'idle',records:[],corpus:null,selection:null,error:''};
+  const visualDefaults=()=>({analysis:'formats',visualStatus:'idle',visualPatterns:[],visualProposals:[],visualError:'',visualNotice:'',analyzedRecords:0});
+  let state={...visualDefaults(),source:source==='corpus'?'corpus':'library',explicit:source==='corpus'||source==='library',available:false,query:'',status:'idle',records:[],corpus:null,selection:null,error:''};
   let active=false,timer,requestDeadline,controller,version=0;
-  const snapshot=()=>({...state,records:[...state.records]});
+  const snapshot=()=>({...state,records:[...state.records],visualPatterns:[...state.visualPatterns],visualProposals:[...state.visualProposals]});
   const notify=()=>onChange(snapshot());
   function cancel(){clearTimeout(timer);clearTimeout(requestDeadline);timer=undefined;controller?.abort();controller=undefined;version++;}
-  function reset(){state={...state,status:'idle',records:[],corpus:null,selection:null,error:''};}
+  function reset(){state={...state,...visualDefaults(),status:'idle',records:[],corpus:null,selection:null,error:''};}
   function load(delay=0){
-    cancel();state={...state,status:'loading',records:[],corpus:null,selection:null,error:''};notify();
+    cancel();state={...state,...visualDefaults(),status:'loading',records:[],corpus:null,selection:null,error:''};notify();
     const current=version;
     const start=async()=>{
       timer=undefined;const task=new AbortController();controller=task;
@@ -58,8 +64,29 @@ export function createPatternController({request,onChange=()=>{},debounceMs=300,
     if(delay)timer=setTimeout(start,delay);else void start();
   }
   function refresh(){if(active&&state.source==='corpus'&&state.available)load();else notify();}
+  async function detectVisualPatterns(){
+    if(!active||state.source!=='corpus'||!state.available||state.status!=='ready'||state.visualStatus==='loading')return;
+    if(state.visualStatus==='ready'){state.analysis='visual';notify();return;}
+    cancel();const current=version,task=new AbortController();controller=task;
+    state={...state,analysis:'visual',visualStatus:'loading',visualPatterns:[],visualProposals:[],visualError:'',visualNotice:''};notify();
+    let deadline;
+    try{
+      const timeout=new Promise((resolve,reject)=>{deadline=setTimeout(()=>{reject(new Error('Visual-pattern detection timed out. No automatic retry was made.'));task.abort();},65000);requestDeadline=deadline;});
+      const value=await Promise.race([request('/api/corpus/visual-patterns',{query:state.query.trim()},task.signal),timeout]);
+      const sample=normalizePatternSample(value);
+      if(!Number.isInteger(value.analyzedRecords)||value.analyzedRecords<0||value.analyzedRecords>60||value.analyzedRecords>sample.records.length||typeof value.notice!=='string'||value.notice.length>2000)throw new Error('Invalid visual-pattern evidence.');
+      const grounded=groundVisualPatterns(sample.records,value.proposals);
+      if(grounded.rejected)throw new Error('Invalid visual-pattern evidence.');
+      if(current!==version||!active||state.source!=='corpus')return;
+      state={...state,...sample,visualStatus:'ready',visualPatterns:grounded.patterns,visualProposals:grounded.proposals,visualNotice:value.notice,analyzedRecords:value.analyzedRecords};
+    }catch(error){
+      if(current!==version||!active||state.source!=='corpus')return;
+      state={...state,visualStatus:'error',visualPatterns:[],visualProposals:[],visualError:error?.message||'Visual-pattern detection failed.'};
+    }finally{clearTimeout(deadline);if(current===version){controller=undefined;notify();}}
+  }
   return {
-    snapshot,
+    snapshot,detectVisualPatterns,
+    showFormats(){if(state.visualStatus==='loading'){cancel();state={...state,...visualDefaults()};}else state.analysis='formats';notify();},
     configure(available){
       const wasAvailable=state.available;
       state={...state,available:available===true};
@@ -73,7 +100,7 @@ export function createPatternController({request,onChange=()=>{},debounceMs=300,
       if(query!==state.query){cancel();reset();state.query=query;}
       if(state.source==='corpus'&&state.available&&state.status==='idle')load();else notify();
     },
-    leave(){active=false;cancel();if(state.status==='loading')reset();},
+    leave(){active=false;cancel();if(state.status==='loading')reset();else if(state.visualStatus==='loading')state={...state,...visualDefaults()};},
     chooseSource(next){
       if(!['corpus','library'].includes(next))return;
       const changed=next!==state.source;state={...state,source:next,explicit:true};

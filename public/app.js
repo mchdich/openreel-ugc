@@ -4,6 +4,7 @@ import {extractAudio} from './audio.js';
 import {normalizeWorkspace,mergeLibrary} from './workspace.js';
 import {normalizeRecords,searchRecords,getTrends,research,researchQuery,wantsSimilarity} from './engine.js';
 import {createPatternController,patternPreviewRecords} from './patterns.js';
+import {groundVisualPatterns} from './visual-patterns.js';
 import {badgeRecords} from './badge.js';
 
 const $ = (s,root=document)=>root.querySelector(s);
@@ -132,12 +133,13 @@ function sortedRecords(records){if(niche)records=records.filter(r=>r.niche===nic
 function filteredRecords(){return sortedRecords(searchRecords(state.records,query));}
 function patternRecords(){return patterns.snapshot().source==='corpus'?sortedRecords(patterns.snapshot().records):filteredRecords();}
 function empty(ic,title,text,button=''){return `<div class="empty-state">${icon(ic)}<h2>${escape(title)}</h2><p>${escape(text)}</p>${button}</div>`;}
-function trendGroupCards(records,kind,compactEmpty=false){const trends=getTrends(records);return trends.length?`<div class="trend-grid">${trends.map((t,i)=>{
+function currentVisualPatterns(){return groundVisualPatterns(patternRecords(),patterns.snapshot().visualProposals).patterns;}
+function trendGroupCards(records,kind,compactEmpty=false,trends=getTrends(records)){return trends.length?`<div class="trend-grid">${trends.map((t,i)=>{
   const creators=[...new Map(t.records.map(r=>[creatorKey(r),r])).values()];
-  const previewCreators=kind==='corpus'?patternPreviewRecords(t.records):[];
-  const stackRecords=kind==='corpus'?[...previewCreators,...creators.filter(r=>!previewCreators.some(preview=>creatorKey(preview)===creatorKey(r)))]:creators;
-  const first=t.records[0],description=first?.transcript||first?.visualDescription||'A repeated visual or narrative format across multiple creators.',previews=kind==='corpus'?patternPreviewRecords(t.records):t.records.slice(0,3);
-  return `<button class="trend-card" data-trend="${escape(t.format)}" data-trend-kind="${kind}"><div class="trend-art c${i%6}">${previews.map(r=>`<span class="trend-sample">${url(r.thumbnail)?`<img src="${escape(url(r.thumbnail))}" alt="" loading="lazy">`:`<span>${escape((r.hook||r.caption||t.format).slice(0,60))}</span>`}</span>`).join('')}</div><div class="trend-content"><h2>${escape(t.format)}</h2><p>${!first?.transcript&&first?.visualDescription?`<span class="trend-summary-source">${escape(descriptionLabel(first))} · </span>`:''}${escape(description.slice(0,110))}…</p><div class="trend-footer"><span class="creator-stack">${stackRecords.slice(0,3).map(r=>`<i title="${escape(displayHandle(r.handle,r.creatorId))}">${avatarContents(r,true)}</i>`).join('')}${creators.length>3?`<i>+${creators.length-3}</i>`:''}</span><span>See more ›</span></div></div></button>`;
+  const previewCreators=['corpus','visual'].includes(kind)?patternPreviewRecords(t.records):[];
+  const stackRecords=['corpus','visual'].includes(kind)?[...previewCreators,...creators.filter(r=>!previewCreators.some(preview=>creatorKey(preview)===creatorKey(r)))]:creators;
+  const first=t.records[0],description=t.description||first?.transcript||first?.visualDescription||'A repeated visual or narrative format across multiple creators.',previews=['corpus','visual'].includes(kind)?patternPreviewRecords(t.records):t.records.slice(0,3);
+  return `<button class="trend-card" ${kind==='visual'?`data-visual-pattern="${i}"`:`data-trend="${escape(t.format)}" data-trend-kind="${kind}"`}><div class="trend-art c${i%6}">${previews.map(r=>`<span class="trend-sample">${url(r.thumbnail)?`<img src="${escape(url(r.thumbnail))}" alt="" loading="lazy">`:`<span>${escape((r.hook||r.caption||t.format).slice(0,60))}</span>`}</span>`).join('')}</div><div class="trend-content"><h2>${escape(t.format)}</h2><p>${kind==='visual'?'<span class="trend-summary-source">AI-proposed · </span>':!first?.transcript&&first?.visualDescription?`<span class="trend-summary-source">${escape(descriptionLabel(first))} · </span>`:''}${escape(description.slice(0,110))}…</p><div class="trend-footer"><span class="creator-stack">${stackRecords.slice(0,3).map(r=>`<i title="${escape(displayHandle(r.handle,r.creatorId))}">${avatarContents(r,true)}</i>`).join('')}${creators.length>3?`<i>+${creators.length-3}</i>`:''}</span><span>See more ›</span></div></div></button>`;
 }).join('')}</div>`:compactEmpty?'<p class="small-note">No shared pattern matches the current records and filters.</p>':empty('trend','No shared formats yet',kind==='corpus'?'The retrieved sample needs at least two different creators sharing a supplied format. Try another corpus search or adjust the sample filters.':'A trend needs at least two different creators using the same format. Import more videos or adjust your filters.');}
 function trendCards(){
   const sample=patterns.snapshot();
@@ -146,6 +148,12 @@ function trendCards(){
     if(sample.status==='loading')return '<p class="small-note" role="status">Searching indexed real records…</p>';
     if(sample.status==='error')return `<div class="error-message" role="alert">${escape(sample.error)} <button class="secondary-button" data-action="retry-patterns">Retry corpus search</button></div>`;
     if(!sample.records.length)return empty('search','No indexed records match this search.','Try a different corpus query. No library examples are substituted.');
+    if(sample.analysis==='visual'){
+      if(sample.visualStatus==='loading')return '<p class="small-note" role="status">Comparing attributed visual descriptions…</p>';
+      if(sample.visualStatus==='error')return `<div class="error-message" role="alert">${escape(sample.visualError)} <button class="secondary-button" data-action="detect-visual-patterns">Retry visual detection</button></div>`;
+      const groups=currentVisualPatterns();
+      return groups.length?trendGroupCards(patternRecords(),'visual',false,groups):empty('trend','No supported shared visual patterns','The selected descriptions did not support a specific pattern across independent creators. Broader formats remain available.');
+    }
     return trendGroupCards(patternRecords(),'corpus');
   }
   const records=filteredRecords(),mixed=state.records.some(r=>r.demo)&&state.records.some(r=>!r.demo);
@@ -160,26 +168,32 @@ function trendContext(trend){
   const evidence=Array.isArray(trend.evidence)?trend.evidence:[],groups=Array.isArray(trend.sourceGroups)?trend.sourceGroups:[],dates=trend.dateWindow;
   const label=e=>e.field==='format'?'Supplied format label':descriptionLabel(e);
   if(!evidence.length&&!dates)return '';
-  return `<details class="trend-evidence"><summary>Evidence and dates</summary>${groups.length?`<p>${groups.map(g=>`${g.count} × ${escape(label(g))}`).join(' · ')}</p>`:''}${dates?`<p>Supplied posting dates: ${escape(dates.start?(dates.start===dates.end?dates.start:dates.start+' – '+dates.end):'Unavailable')} · ${Number(dates.knownRecords)||0} dated · ${Number(dates.unknownRecords)||0} undated${dates.unknownTimezoneRecords?` · ${Number(dates.unknownTimezoneRecords)} without a time zone`:''}</p>${dates.limit?`<p class="caption">${escape(dates.limit)}</p>`:''}`:''}${evidence.length?`<ul>${evidence.slice(0,5).map(e=>{const record=trend.records.find(r=>r.id===e.recordId);return `<li><strong>${escape(record?displayHandle(record.handle,record.creatorId):'Source record')}</strong><small>${escape(label(e))}</small><q>${escape(e.excerpt)}</q></li>`;}).join('')}</ul>${evidence.length>5?`<p class="caption">Showing 5 of ${evidence.length} supplied excerpts.</p>`:''}`:''}</details>`;
+  return `<details class="trend-evidence"><summary>Evidence and dates</summary>${groups.length?`<p>${groups.map(g=>`${g.count} × ${escape(label(g))}`).join(' · ')}</p>`:''}${dates?`<p>Supplied posting dates: ${escape(dates.start?(dates.start===dates.end?dates.start:dates.start+' – '+dates.end):'Unavailable')} · ${Number(dates.knownRecords)||0} dated · ${Number(dates.unknownRecords)||0} undated${dates.unknownTimezoneRecords?` · ${Number(dates.unknownTimezoneRecords)} without a time zone`:''}</p>${dates.limit?`<p class="caption">${escape(dates.limit)}</p>`:''}`:''}${evidence.length?`<ul>${evidence.slice(0,trend.proposed?12:5).map(e=>{const record=trend.records.find(r=>r.id===e.recordId);return `<li><strong>${escape(record?displayHandle(record.handle,record.creatorId):'Source record')}</strong><small>${e.component?escape(e.component)+' · ':''}${escape(label(e))}</small><q>${escape(e.excerpt)}</q></li>`;}).join('')}</ul>${!trend.proposed&&evidence.length>5?`<p class="caption">Showing 5 of ${evidence.length} supplied excerpts.</p>`:''}`:''}</details>`;
 }
 
 function patternMetrics(){
   const sample=patterns.snapshot();
   const viewTotal=records=>{const measured=records.filter(r=>known(r,'views'));return measured.length?compact(measured.reduce((total,r)=>total+r.views,0)):'—';};
-  if(sample.source==='corpus')return `<div class="metric">${compact(sample.records.length)}<small>Retrieved real records</small></div><div class="metric">${getTrends(sample.records).length}<small>Retrieved pattern groups</small></div><div class="metric" data-metric="sample-views">${viewTotal(sample.records)}<small>Retrieved sample views</small></div>`;
+  if(sample.source==='corpus')return `<div class="metric">${compact(sample.records.length)}<small>Retrieved real records</small></div><div class="metric">${sample.analysis==='visual'?sample.visualPatterns.length:getTrends(sample.records).length}<small>${sample.analysis==='visual'?'Proposed visual patterns':'Retrieved pattern groups'}</small></div><div class="metric" data-metric="sample-views">${viewTotal(sample.records)}<small>Retrieved sample views</small></div>`;
   const recorded=state.records.filter(r=>!r.demo),examples=state.records.filter(r=>r.demo),mixed=recorded.length>0&&examples.length>0;
   const primary=recorded.length?recorded:examples,kind=recorded.length?'Recorded':'Example';
   return `<div class="metric">${compact(state.records.length)}<small>Records in your library</small></div><div class="metric">${getTrends(primary).length}<small>${kind} pattern groups</small></div><div class="metric" data-metric="${kind.toLowerCase()}-views">${viewTotal(primary)}<small>${kind} views</small></div>${mixed?`<div class="metric" data-metric="example-views">${viewTotal(examples)}<small>Example views</small></div>`:''}`;
 }
-function patternDescription(){const sample=patterns.snapshot();return sample.source==='corpus'?'Recurring formats across creators in a retrieved corpus sample.':state.records.some(r=>r.demo)&&state.records.some(r=>!r.demo)?'Recorded patterns and fictional examples, kept separate.':'Repeatable formats, backed by multiple creators in your library.';}
+function patternDescription(){const sample=patterns.snapshot();return sample.source==='corpus'?(sample.analysis==='visual'?'Specific visual-pattern proposals from attributed descriptions.':'Recurring formats across creators in a retrieved corpus sample.'):state.records.some(r=>r.demo)&&state.records.some(r=>!r.demo)?'Recorded patterns and fictional examples, kept separate.':'Repeatable formats, backed by multiple creators in your library.';}
 function patternNote(){
   const sample=patterns.snapshot();
+  if(sample.source==='corpus'&&sample.analysis==='visual')return `${sample.analyzedRecords} attributed descriptions compared. ${sample.visualNotice||'Detection proposes patterns from source descriptions; it does not inspect footage or establish current growth.'}`;
   if(sample.source==='corpus')return `${sample.corpus?compact(sample.corpus.byKind.real)+' indexed real records in the server corpus. ':''}${sample.selection?.method==='format-stratified'?'Browse records are deliberately selected for coverage across formats. ':''}Groups and metrics describe only the retrieved sample of up to 100 records. Supplied posting dates may be archival; these patterns do not establish current or platform-wide growth.`;
   const recorded=state.records.filter(r=>!r.demo),examples=state.records.filter(r=>r.demo);
   return `${recorded.length&&examples.length?`${recorded.length} recorded records and ${examples.length} fictional examples remain in separate totals and patterns. `:examples.length?'All current metrics are fictional examples. ':''}Signals describe your library, not platform-wide growth.`;
 }
+function visualPatternControls(){
+ const sample=patterns.snapshot();if(sample.source!=='corpus')return '';
+ return `<button class="secondary-button" data-action="show-pattern-formats" aria-pressed="${sample.analysis==='formats'}">Formats</button><button class="secondary-button" data-action="detect-visual-patterns" aria-pressed="${sample.analysis==='visual'}" ${!aiStatus.providerConfigured||sample.status!=='ready'||sample.visualStatus==='loading'?'disabled':''}>${sample.visualStatus==='loading'?'Detecting visual patterns…':sample.visualStatus==='ready'?'Visual patterns':'Detect visual patterns'}</button>`;
+}
 function updatePatternResults(){
   const sample=patterns.snapshot(),content=$('#filtered-content');if(!content)return;
+  $('#visual-pattern-actions').innerHTML=visualPatternControls();
   content.innerHTML=trendCards();$('#pattern-metrics').innerHTML=patternMetrics();$('#pattern-note').textContent=patternNote();$('.page-header p').textContent=patternDescription();
   for(const button of document.querySelectorAll('[data-pattern-source]')){button.setAttribute('aria-pressed',String(button.dataset.patternSource===sample.source));button.disabled=button.dataset.patternSource==='corpus'&&!sample.available;}
   const search=$('#library-search');search.setAttribute('aria-label',sample.source==='corpus'?'Search corpus':'Search library');search.placeholder=sample.source==='corpus'?'Search indexed video records…':'Search hooks, creators, niches…';if(sample.source==='corpus')search.maxLength=1000;else search.removeAttribute('maxlength');
@@ -187,7 +201,7 @@ function updatePatternResults(){
 }
 function renderTrends(){
   const sample=patterns.snapshot();
-  return `<section class="page">${header('A little ahead of the scroll.',patternDescription(),`<button class="secondary-button" data-view="library">${icon('library')}Your library</button>`)}<div class="pattern-source" role="group" aria-label="Pattern source"><button class="secondary-button" data-pattern-source="corpus" aria-pressed="${sample.source==='corpus'}" ${sample.available?'':'disabled'}>Corpus</button><button class="secondary-button" data-pattern-source="library" aria-pressed="${sample.source==='library'}">Library</button></div><div class="metric-row" id="pattern-metrics">${patternMetrics()}</div>${filterbar(sample.source==='corpus'?sample.records:state.records,sample.source==='corpus')}<div id="filtered-content">${trendCards()}</div><p class="small-note" id="pattern-note">${escape(patternNote())}</p></section>`;
+  return `<section class="page">${header('A little ahead of the scroll.',patternDescription(),`<button class="secondary-button" data-view="library">${icon('library')}Your library</button>`)}<div class="pattern-source" role="group" aria-label="Pattern source"><button class="secondary-button" data-pattern-source="corpus" aria-pressed="${sample.source==='corpus'}" ${sample.available?'':'disabled'}>Corpus</button><button class="secondary-button" data-pattern-source="library" aria-pressed="${sample.source==='library'}">Library</button><span id="visual-pattern-actions">${visualPatternControls()}</span></div><div class="metric-row" id="pattern-metrics">${patternMetrics()}</div>${filterbar(sample.source==='corpus'?sample.records:state.records,sample.source==='corpus')}<div id="filtered-content">${trendCards()}</div><p class="small-note" id="pattern-note">${escape(patternNote())}</p></section>`;
 }
 
 function recordsContent(bookmarked=false){const records=filteredRecords().filter(r=>!bookmarked||state.bookmarks.includes(r.id));return records.length?`<div class="records-grid">${records.map(videoCard).join('')}</div>`:empty(bookmarked?'bookmark':'search',bookmarked?'Keep the good ones close.':'No videos match this search.',bookmarked?'Bookmark a video from your research or library. It will be waiting here.':'Try a different search or import records that match your question.',`<button class="secondary-button" data-view="${bookmarked?'library':'settings'}">${bookmarked?'Explore the library':'Import data'}</button>`);}
@@ -278,6 +292,7 @@ document.addEventListener('click',async e=>{
    if(sourceMode==='video'){sourceMode=active()?.source||defaultSource();rememberSource(active(),sourceMode);}
    $('#modal').close();navigate('chat');$('#question')?.focus();return;
  }
+ if(b.dataset.visualPattern!==undefined){const index=Number(b.dataset.visualPattern),trend=Number.isInteger(index)?currentVisualPatterns()[index]:undefined;if(!trend){toast('This visual pattern is no longer available.');return;}showModal(trend.format,`<p><strong>AI-proposed visual pattern.</strong> ${escape(trend.description)} Based on attributed descriptions, not newly inspected footage or current growth.</p><p>Shared components: ${trend.components.map(c=>escape(c.label)).join(' · ')}</p>${trendContext(trend)}${trendExampleRows(trend.records)}<div class="source-cards">${trend.records.map(videoCard).join('')}</div>`);return;}
  if(b.dataset.trend){const example=b.dataset.trendKind==='example',corpus=b.dataset.trendKind==='corpus';const trend=getTrends((corpus?patternRecords():filteredRecords()).filter(r=>Boolean(r.demo)===example)).find(t=>t.format===b.dataset.trend);if(!trend){toast('This pattern is no longer available in the current results.');return;}showModal(trend.format,`<p>${example?'Fictional example pattern. Creators and metrics below are demonstration data.':corpus?'A recurring format in the retrieved real-record sample.':'A pattern in supplied records.'} These examples do not establish current growth.</p>${trendContext(trend)}${trendExampleRows(trend.records)}<div class="source-cards">${trend.records.slice(0,4).map(videoCard).join('')}</div><button class="primary-button" data-research-source="${corpus?'corpus':'library'}" data-prompt="${escape(`Analyze the ${trend.format} format and write a creative brief`)}">Research this format ${icon('arrow')}</button>`);return;}
  if(b.dataset.bookmark){const id=b.dataset.bookmark;if(state.bookmarks.includes(id)){state.bookmarks=state.bookmarks.filter(x=>x!==id);toast('Bookmark removed.');}else{try{const record=findRecord(id);if(!record)throw new Error('This source is no longer available.');if(!state.records.some(r=>r.id===id))state.records=mergeLibrary(state.records,[record]);state.bookmarks.push(id);toast('Saved to Bookmarks.');}catch(error){toast(error.message);return;}}save();render();if($('#modal').open)recordModal(id);return;}
  if(b.dataset.copyResult){const split=b.dataset.copyResult.lastIndexOf(':');const id=b.dataset.copyResult.slice(0,split),i=b.dataset.copyResult.slice(split+1);const result=state.conversations.find(c=>c.id===id)?.messages[Number(i)]?.result;try{await navigator.clipboard.writeText(resultText(result));toast('Research copied.');}catch{toast('Clipboard is unavailable. Use Export to save your research.');}return;}
@@ -286,6 +301,8 @@ document.addEventListener('click',async e=>{
  if(b.dataset.pauseAlert){const a=state.alerts.find(a=>a.id===b.dataset.pauseAlert);if(a){a.paused=!a.paused;save();render();}return;}
  if(b.dataset.deleteAlert){state.alerts=state.alerts.filter(a=>a.id!==b.dataset.deleteAlert);save();render();return;}
  const action=b.dataset.action;if(!action)return;e.preventDefault();
+ if(action==='detect-visual-patterns'){void patterns.detectVisualPatterns();return;}
+ if(action==='show-pattern-formats'){patterns.showFormats();return;}
  if(action==='retry-patterns'){patterns.retry();return;}
  if(action==='close-modal')$('#modal').close();
  if(action==='new-chat')newChat();
