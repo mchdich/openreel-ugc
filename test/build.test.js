@@ -43,5 +43,10 @@ test('portable Worker binds its hosted corpus through D1 without runtime schema 
       const discovery=await worker.fetch(new Request('https://d1-build.example/api/videos/discover',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer owner-test-token'},body:JSON.stringify({query:'Find coffee creators'})}),{DB:binding,OPENAI_API_KEY:'provider-test-secret',OPENAI_MODEL:'gpt-5.4-mini',OPENREEL_WEB_DISCOVERY:'true',OPENREEL_API_TOKEN:'owner-test-token'});
       assert.equal(discovery.status,200);const found=await discovery.json();assert.equal(found.provider,'web-assisted-public-profile-verification');assert.equal(found.records[0].handle,'@freshbuild');assert.ok(writes>beforeBrowse);
     }finally{globalThis.fetch=originalFetch;}
+    await openWorkerCorpus(binding).upsert(['Harvard University','Massachusetts Institute of Technology'].map((school,i)=>({id:`school-build-${i}`,handle:`@school_${i}`,caption:'Coffee brewing fixture',school,url:`https://www.tiktok.com/@school_${i}/video/${8000+i}`,sourceType:'test-fixture',fetchedAt:'2024-01-01T00:00:00Z',demo:false})),{kind:'real',source:'controlled parser regression'});
+    for(const [query,expected] of [['Find Coffee creators',3],['Find coffee creators at Harvard University',1],['Find coffee creators at Massachusetts Institute of Technology',1]]){
+      const result=await worker.fetch(new Request('https://d1-build.example/api/corpus/search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({query})}),{DB:binding});
+      assert.equal(result.status,200);assert.equal((await result.json()).records.length,expected,query);
+    }
   }finally{db.close();}
 });

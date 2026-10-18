@@ -157,9 +157,11 @@ export function searchPlan(query='', options={}, records=[]) {
   if (!filters.school) {
     const named = rest.match(/(?:^|\b)([a-z][a-z .&'-]{0,70}\b(?:university|college|school)(?:\s+of\s+[a-z][a-z\s.'-]{1,40})?)\s+(?:creators?|influencers?)\b/i);
     const proper = String(query).match(/\b(?:find|show(?:\s+me)?|list|discover|get|give(?:\s+me)?)\s+(?:\d+\s+)?(.+?)\s+(?:creators?|influencers?)\b/i)?.[1]?.trim();
+    // Capitalization alone cannot distinguish a content topic from a school.
+    // These bare request names retain their existing literal storage keys.
+    const bareSchool = ['harvard','stanford','princeton','yale','mit'].includes(lower(proper)) ? lower(proper) : '';
     // Strip request connectors before the institution word, preserving connectors within its name.
-    const candidate = named?.[1]?.replace(/^(?:(?!\b(?:university|college|school)\b).)*\b(?:for|at|from|attending|among|by)\s+/i, '').replace(/^(?:find|show(?:\s+me)?|list|discover|get|give(?:\s+me)?)\s+(?:\d+\s+)?/i, '').trim()
-      || (proper && /^[A-Z]/.test(proper) && !records.some(record => record.niche && contains(lower(proper), lower(record.niche))) ? proper : '');
+    const candidate = named?.[1]?.replace(/^(?:(?!\b(?:university|college|school)\b).)*\b(?:for|at|from|attending|among|by)\s+/i, '').replace(/^(?:find|show(?:\s+me)?|list|discover|get|give(?:\s+me)?)\s+(?:\d+\s+)?/i, '').trim() || bareSchool;
     if (candidate) {
       filters.school = candidate;
       rest = rest.replace(new RegExp(`\\b(?:(?:for|at|from|attending|among|by)\\s+)?${escapeRegExp(lower(candidate))}\\b`, 'gi'), ' ');

@@ -13,6 +13,16 @@ function open(path=':memory:'){assert.equal(typeof module?.openCorpus,'function'
 function temporary(t){const dir=mkdtempSync(join(tmpdir(),'openreel-corpus-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));return dir;}
 function run(...args){return spawnSync(process.execPath,['scripts/corpus.js',...args],{cwd:root,encoding:'utf8'});}
 
+test('capitalized content topics and explicit institution names preserve SQLite school keys',()=>{
+ const db=open();
+ try{
+  db.upsert([real({id:'harvard',handle:'@one',url:'https://www.tiktok.com/@one/video/1001',caption:'Coffee technique',school:'Harvard University'}),real({id:'mit',handle:'@two',url:'https://www.tiktok.com/@two/video/1002',caption:'Coffee brewing',school:'Massachusetts Institute of Technology'})],{kind:'real',source:'controlled parser regression'});
+  assert.equal(db.search('Find Coffee creators').length,2);
+  assert.deepEqual(db.search('Find coffee creators at Harvard University').map(record=>record.id),['harvard']);
+  assert.deepEqual(db.search('Find coffee creators at Massachusetts Institute of Technology').map(record=>record.id),['mit']);
+ }finally{db.close();}
+});
+
 // Missing persistence or category filtering loses a user's real research library on reopen.
 test('file corpus persists records and keeps example and unverified counts distinct',t=>{
  const path=join(temporary(t),'nested','corpus.sqlite');let db=open(path);

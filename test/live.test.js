@@ -16,7 +16,7 @@ async function withFetch(fn,run){const original=globalThis.fetch;globalThis.fetc
 
 test('live query refreshes indexed handles through official GET and returns only current compound matches',async()=>{
  const old=seed('campuscreator');
- const index={...corpus([old]),search:async(text,options)=>{assert.equal(text,'');assert.deepEqual(options,{kind:'real',uniqueCreators:true,knownHandlesOnly:true,limit:3,school:'NYU'});return [old];}};
+ const index={...corpus([old]),search:async(text,options)=>{assert.equal(text,'');assert.deepEqual(options,{kind:'real',uniqueCreators:true,knownHandlesOnly:true,limit:3,school:'nyu'});return [old];}};
  await withFetch(async(url,options)=>{
   assert.equal(url,'https://www.tiktok.com/embed/@campuscreator');
   assert.equal(options.method,'GET');assert.equal(options.redirect,'error');assert.equal(options.headers.authorization,undefined);

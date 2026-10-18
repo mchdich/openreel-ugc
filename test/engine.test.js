@@ -161,6 +161,26 @@ test('non-alias school plans preserve topic and profile filters without a loaded
  }
 });
 
+test('capitalized creator topics do not become invented university constraints',()=>{
+ for(const topic of ['Coffee','Skincare','Cooking','Woodworking','Ceramics']){
+  const rows=normalizeRecords([{id:'actual',handle:'@topic_person',bio:`${topic} creator`,caption:`${topic} tutorial`},{id:'unrelated',handle:'@other',caption:'A dog in the park'}]);
+  for(const query of [`Find ${topic} creators`,`Find ${topic.toLowerCase()} creators`]){
+   assert.equal(searchPlan(query).filters.school,undefined,query);
+   assert.deepEqual(searchPlan(query).terms,[topic.toLowerCase()],query);
+   assert.deepEqual(searchRecords(rows,query).map(row=>row.id),['actual'],query);
+  }
+ }
+});
+
+test('known bare university names still require school evidence without matching library labels',()=>{
+ const rows=normalizeRecords([{id:'caption-only',handle:'@visitor',caption:'Visiting Harvard and Stanford campuses',school:'Princeton University'}]);
+ for(const name of ['Harvard','Stanford']){
+  const query=`Find ${name} creators`;
+  assert.ok(searchPlan(query).filters.school,query);
+  assert.deepEqual(searchRecords(rows,query),[],query);
+ }
+});
+
 test('dash follower ranges enforce both bounds and propagate a trailing unit', () => {
   const records = normalizeRecords([
     { handle: 'low', followers: 100 }, { handle: 'min', followers: 10000 }, { handle: 'middle', followers: 15000 }, { handle: 'max', followers: 20000 }, { handle: 'high', followers: 30000 }

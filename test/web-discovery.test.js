@@ -116,6 +116,36 @@ test('public access barriers and malformed responses remain errors rather than s
  }
 });
 
+test('a failed profile batch preserves confirmed matches and reports partial coverage without retry',async()=>{
+ const gets=[];let providerCalls=0;
+ await withFetch(async(url)=>{
+  if(String(url).endsWith('/responses')){providerCalls++;return json(output(['available','blocked'].map(candidate)));}
+  const handle=new URL(url).pathname.split('@')[1];gets.push(handle);
+  return handle==='blocked'?new Response('Forbidden',{status:403}):profile(handle);
+ },async()=>{
+  const result=await discover('Find coffee creators',{},env);
+  assert.deepEqual(result.records.map(record=>record.handle),['@available']);
+  assert.equal(result.incomplete,true);assert.equal(result.profilesFailed,1);
+  assert.equal(result.profilesChecked,2);assert.equal(result.creatorsRefreshed,1);
+  assert.match(result.notice,/partial results/i);assert.match(result.notice,/no further profiles/i);
+  assert.equal(providerCalls,1);assert.deepEqual(gets.sort(),['available','blocked']);
+ });
+});
+
+test('a failed indexed-profile batch prevents the proposed-profile batch while retaining valid fresh seed evidence',async()=>{
+ const gets=[];
+ await withFetch(async(url)=>{
+  if(String(url).endsWith('/responses'))return json(output([candidate('must_not_fetch')]));
+  const handle=new URL(url).pathname.split('@')[1];gets.push(handle);
+  return handle==='blocked'?new Response('Rate limited',{status:429}):profile(handle);
+ },async()=>{
+  const result=await discover('Find coffee creators',{},env,corpus(['available','blocked']));
+  assert.deepEqual(result.records.map(record=>record.handle),['@available']);
+  assert.equal(result.incomplete,true);assert.equal(result.profilesFailed,1);
+  assert.equal(result.profilesChecked,2);assert.deepEqual(gets.sort(),['available','blocked']);
+ });
+});
+
 test('searched URLs are global proposal context and never a verified handle-to-page attribution',async()=>{
  const proposed={handle:'available',sourceUrl:'https://another-creator.example/about'};
  await withFetch(async(url)=>String(url).endsWith('/responses')?json(output([proposed])):profile('available'),async()=>{
@@ -181,7 +211,7 @@ test('public web discovery is bearer-protected before any paid or profile reques
 
 test('the discovery API persists only independently verified matching official records',async()=>{
  const stored=[];const index={search:async()=>[],upsert:async(records,options)=>{stored.push({records,options});return {changed:records.length};}};
- await withFetch(async(url)=>String(url).endsWith('/responses')?json(output([candidate('newperson')])):profile('newperson'),async()=>{
-  const response=await handleApi(post({query:'Find coffee creators at NYU with at least 1000 followers and email in bio'}),{...env,OPENREEL_CORPUS:index});assert.equal(response.status,200);const body=await response.json();assert.equal(body.provider,'web-assisted-public-profile-verification');assert.equal(body.records.length,1);assert.equal(stored.length,1);assert.equal(stored[0].options.kind,'real');assert.equal(stored[0].options.verification,'provider-observed');assert.equal(stored[0].records[0].bio,'NYU\ncoffee\ncurrent@creator.example');assert.equal(stored[0].records[0].sourceType,'tiktok-creator-embed');
+ await withFetch(async(url)=>String(url).endsWith('/responses')?json(output(['newperson','blocked'].map(candidate))):String(url).endsWith('@blocked')?new Response('Forbidden',{status:403}):profile('newperson'),async()=>{
+  const response=await handleApi(post({query:'Find coffee creators at NYU with at least 1000 followers and email in bio'}),{...env,OPENREEL_CORPUS:index});assert.equal(response.status,200);const body=await response.json();assert.equal(body.provider,'web-assisted-public-profile-verification');assert.equal(body.incomplete,true);assert.equal(body.profilesFailed,1);assert.match(body.notice,/partial results/i);assert.equal(body.records.length,1);assert.equal(stored.length,1);assert.equal(stored[0].options.kind,'real');assert.equal(stored[0].options.verification,'provider-observed');assert.equal(stored[0].records[0].bio,'NYU\ncoffee\ncurrent@creator.example');assert.equal(stored[0].records[0].sourceType,'tiktok-creator-embed');
  });
 });

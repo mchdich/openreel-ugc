@@ -1,4 +1,4 @@
-# Local demo verification — 1.7.0
+# Local demo verification — 1.7.1
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text and vision use GPT-5.4 mini; transcription uses whisper-1. No provider responses were substituted in the browser acceptance runs.
 
@@ -23,7 +23,15 @@ A real repeat also exposed a Responses detail: an overall completed reply can re
 
 The final actual coffee discovery took 4.355 seconds; discovery plus synthesis took 7.099 seconds and rendered three creators with three loaded avatars. NYU discovery took 4.504 seconds; its final answer took 6.150 seconds and rendered one matching creator/avatar. Both API pairs returned HTTP 200. Reload retained the NYU table; no page errors, saved provider-key patterns or 390px horizontal overflow occurred. Later refreshes left corpus counts unchanged. Provider replies were captured transparently for diagnosis; none were replaced in these browser flows.
 
-Web discovery is explicit server opt-in, using the existing local key. One Responses request, a 25-second provider deadline, strict structured output and a 128 KiB response cap bound the model phase. At most three indexed plus three proposed profiles are checked, with at most three concurrent official GETs; output is capped at 30 actual records. Explicit profile 404s are counted and skipped, while access barriers and malformed responses remain errors. Public paid requests retain bearer/origin checks. There is no automatic retry or stale-result substitution. Generated Worker/D1 tests exercise the same path with controlled transport fixtures; those fixtures prove behavior, not actual discovery quality.
+Web discovery is explicit server opt-in, using the existing local key. One Responses request, a 25-second provider deadline, strict structured output and a 128 KiB response cap bound the model phase. At most three indexed plus three proposed profiles are checked, with at most three concurrent official GETs; output is capped at 30 actual records. Explicit profile 404s are counted and skipped. In 1.7.1 a failed batch stops further profile acquisition and preserves only independently confirmed matches with a visible partial-results notice; no confirmed matches still yields the original error. Public paid requests retain bearer/origin checks. There is no automatic retry or stale-result substitution. Generated Worker/D1 tests exercise the same path with controlled transport fixtures; those fixtures prove behavior, not actual discovery quality.
+
+## Capitalized topics and upstream partial results (1.7.1)
+
+A regression reproduced “Find Coffee creators” being parsed as an unknown university solely because Coffee was capitalized. Capitalization now carries no institution meaning. Explicit institution phrases, actual loaded school fields and existing NYU/UCLA aliases retain their behavior; a conservative request-name list preserves earlier bare Harvard/Stanford/Princeton/Yale/MIT constraints without changing stored keys or canonicalization. SQLite and generated Worker/D1 regressions verify full institution names and content-topic searches. This is not a general institution recognizer.
+
+The capitalized actual browser repeat initially failed when one official public profile returned an upstream error. That previously discarded independently confirmed matches from the other requests. The updated adapter settles the current bounded batch, stops before any later profile batch, and returns only fresh confirmed matches with `incomplete:true`, `profilesFailed` and a visible partial-results notice. With no confirmed matches it propagates the original failure. It performs no retry, stale-record substitution or access-barrier workaround. A proposed-profile batch is never started after an indexed-profile batch fails.
+
+The final actual “Find Coffee creators” flow returned @jameshoffmanncoffee, @morgandrinkscoffee and @ryantagcoffee in 8.174 seconds; it checked four profiles and explicitly reported one failed check. The NYU/follower/public-email flow returned @lizzie.crane in 7.415 seconds, checked six profiles and explicitly reported one failure. Both discovery/chat pairs returned HTTP 200. Three coffee avatars and the NYU avatar loaded; both answers displayed “Partial results”. Reload, no saved key patterns, no page errors and no 390px horizontal overflow passed. Counts remained 154,428 records / 4,624 creator identities / 266 provider-observed. These partial acquisitions do not claim all proposed profiles were available or checked successfully.
 
 ## Format coverage and measured layout (1.6.0)
 
@@ -69,7 +77,7 @@ The final speech-bearing upload repeat returned HTTP 200 for transcription, crit
 
 ## Final checks
 
-- Node: 334 tests passed, zero failures, including web discovery, relevance/compound filters, error boundaries, format coverage, selection provenance and generated Worker/D1 retrieval.
+- Node: 339 tests passed, zero failures, including web discovery, relevance/compound filters, error boundaries, format coverage, selection provenance and generated Worker/D1 retrieval.
 - Python: 17 passed, one optional test skipped.
 - Portable Worker build completed; publication of this revision to Sites was not requested.
 - The complete browser upload test returned HTTP 200 for transcription and both vision turns. Its first answer arrived about 20.2 seconds after file attachment started.

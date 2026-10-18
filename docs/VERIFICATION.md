@@ -179,3 +179,10 @@ The actual local browser acquired previously unindexed coffee creators using mod
 The corpus grew from 154,424 records / 4,621 creator identities / 262 provider-observed records to 154,428 / 4,624 / 266, with zero example/synthetic/unverified rows. Later refreshes left counts unchanged. At least two new handles were absent by both handle and numeric ID before acquisition. Search pages are global proposal context, not verified handle-to-page associations. Model-produced profile facts never become records. Known posting dates remain absent from these official embeds, so this does not close current emergence or unrestricted keyword coverage.
 
 Final Node verification passed 334 tests. The generated Worker/D1 path, paid-route authentication, bounded calls, unknown metrics/contacts, explicit 404 handling, unsafe avatars, incomplete provider responses and unfinished search exclusion are covered. The separately hosted 1.5.0 snapshot and its credentials remain unchanged. Exact source identity, archive hash and subsequent public CI belong to the release artifact.
+
+
+## Query and acquisition resilience (1.7.1)
+
+Capitalized topic regression tests reproduced and fixed arbitrary school inference. Explicit full institution searches still match existing SQLite/D1 storage keys. A further actual browser run hit one failed public-profile check; the new bounded recovery stops later profile batches, retains only independently confirmed fresh matches and displays partial coverage. No retry or stale fallback occurs; no confirmed matches still produces an error. The actual capitalized Coffee flow returned three relevant creators in 8.174 seconds, and NYU/follower/public-email returned one in 7.415 seconds. Each explicitly reported one failed profile check. All avatars loaded, reload passed and no page errors/mobile overflow occurred.
+
+The full Node suite passed 339 tests, including partial API persistence and both storage adapters. These checks improve demo reliability without claiming unrestricted search or current trend completeness. See [the actual report](DEMO_VERIFICATION.md#capitalized-topics-and-upstream-partial-results-171).
