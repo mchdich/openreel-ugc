@@ -21,10 +21,12 @@
 - [x] Red→green bounded single-call frame description and capture input/budget/failure orchestration; implement optional CLI and existing corpus apply command.
 - [x] Integrate description gates, source labels, details and generated Worker bindings; full tests/build and independent review.
 - [x] Actual native player/model acquisition for current clips from multiple creators plus earlier-window sources; inspect samples/descriptions, apply reviewed deltas, verify protected hashes/counts and actual app research/pattern/current-date behavior. Do not force a positive emerging signal or confuse sampled vision with continuous/audio analysis.
-- [ ] Publish source and exact-commit CI/archive; record any failed player/provider cases and remaining full parity gaps.
+- [x] Publish source and exact-commit CI/archive; record any failed player/provider cases and remaining full parity gaps.
 
 ## Actual outcome
 
 Three reviewed visual deltas applied, all protected fields/counts unchanged; two model descriptions required recorded object/state corrections. Six distinct URLs attempted in separate bounded batches, five captured, four model replies accepted, three applied. One failed player and one rejected reply remain explicit; no retries. Final post-review capture succeeded but was not applied pending content review. Actual app analysis/follow-up returned AI synthesis (4.170/3.399s); details/reload/mobile checks pass. Dated comparison as of October17 has4current/4prior and no qualifying group. Full parity remains active; this increment supplies sampled visual provenance, not representative emergence or continuous/audio analysis.
 
 427 Node tests passed. Independent review found late barrier and cleanup bounds issues, both fixed with red→green regressions and re-reviewed. The first acquisition draft was discarded before final contract-first implementation; actual browser harness selector failure and correction are retained in the verification record.
+
+Implementation publication `834365f` passed exact-commit CI run 39112124041; its source archive byte-matched all 133 tracked files, excluded local acquired data/credentials and contained zero credential findings. The release metadata outside the repository records the final documentation commit and matching artifact checks.
