@@ -37,5 +37,11 @@ test('portable Worker binds its hosted corpus through D1 without runtime schema 
     const beforeBrowse=writes;
     const patterns=await worker.fetch(new Request('https://d1-build.example/api/corpus/patterns',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({query:''})}),{DB:binding});
     assert.equal(patterns.status,200);const sample=await patterns.json();assert.equal(sample.records.length,4);assert.equal(sample.selection.method,'format-stratified');assert.equal(sample.corpus.byKind.real,4);assert.equal(writes,beforeBrowse);
+    const originalFetch=globalThis.fetch;
+    try{
+      globalThis.fetch=async url=>String(url).endsWith('/responses')?new Response(JSON.stringify({status:'completed',output:[{type:'web_search_call',status:'completed',action:{sources:[{url:'https://creator.example/about'}]}},{type:'message',content:[{type:'output_text',text:JSON.stringify({candidates:[{handle:'freshbuild',sourceUrl:'https://creator.example/about'}]})}]}]}),{headers:{'content-type':'application/json'}}):new Response('<script id="__FRONTITY_CONNECT_STATE__">'+JSON.stringify({source:{data:{'/embed/@freshbuild':{isReady:true,isError:false,userInfo:{id:'9990',uniqueId:'freshbuild',nickname:'Fixture',code:200,privateAccount:false,signature:'Coffee creator',followerCount:2000},videoList:[{id:'9991',desc:'Coffee fixture',privateItem:false,authorUniqueId:'freshbuild',playCount:20}]}}}})+'</script>',{headers:{'content-type':'text/html'}});
+      const discovery=await worker.fetch(new Request('https://d1-build.example/api/videos/discover',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer owner-test-token'},body:JSON.stringify({query:'Find coffee creators'})}),{DB:binding,OPENAI_API_KEY:'provider-test-secret',OPENAI_MODEL:'gpt-5.4-mini',OPENREEL_WEB_DISCOVERY:'true',OPENREEL_API_TOKEN:'owner-test-token'});
+      assert.equal(discovery.status,200);const found=await discovery.json();assert.equal(found.provider,'web-assisted-public-profile-verification');assert.equal(found.records[0].handle,'@freshbuild');assert.ok(writes>beforeBrowse);
+    }finally{globalThis.fetch=originalFetch;}
   }finally{db.close();}
 });

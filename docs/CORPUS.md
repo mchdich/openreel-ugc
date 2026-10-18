@@ -2,7 +2,7 @@
 
 The Node corpus stores normalized video records in SQLite; the Worker uses the asynchronous D1 adapter. Both index captions, transcripts, separately labeled visual descriptions, hooks, niches, public bios, schools, locations and actual handles with FTS5. Local iterable imports exceed the browser's 2,000-record limit; hosted writes use explicit bounded batches. Both return bounded ranked result pages.
 
-**The normal local product corpus now has 154,424 real records across 4,621 creator identities, with 262 provider-observed records and zero example, synthetic or unverified rows.** Product API queries and native browser bookmark/reload have been verified against it. The separately verified hosted D1 seed remains 4,424 records. The synthetic capacity benchmark below is a different dataset and does not supply real evidence.
+**The normal local product corpus now has 154,428 real records across 4,624 creator identities, with 266 provider-observed records and zero example, synthetic or unverified rows.** Product API queries and native browser bookmark/reload have been verified against it. The separately verified hosted D1 seed remains 4,424 records. The synthetic capacity benchmark below is a different dataset and does not supply real evidence.
 
 ## Runtime and storage
 
@@ -110,6 +110,12 @@ The collector validates the whole list, normalizes/deduplicates handles, and cal
 The adapter returns a bounded public profile snapshot and currently exposed video records, not a complete history or automatic discovery of every creator. It preserves public source identity, profile evidence, retrieval time, known views/followers, and unknown analytics. It does not download videos or create missing transcripts/visual descriptions. Obtain and retain the rights/provenance needed for any larger acquisition.
 
 An earlier implementation check used one actual request for `@scout2015` to populate a local database with **10 real records from one creator** and `providerObservedReal: 10`. That historical local check is separate from the hosted 4,424-record seed above. Databases are ignored by Git; a source checkout does not itself contain the hosted corpus or optional research archive.
+
+## Optional web-assisted acquisition
+
+With `OPENREEL_WEB_DISCOVERY=true` and a compatible server OpenAI key/model, Live search proposes at most three candidate handles using web-search context and independently checks their official public embeds alongside up to three indexed profiles. Only matching official records are persisted as real/provider-observed. Search pages are global proposal context; they are not independently verified page-to-handle associations. Unknown dates, transcripts and analytics stay unknown. See [the demo evidence](DEMO_VERIFICATION.md).
+
+The first actual browser acquisition raised the local store to 154,428 records, 4,624 creator identities and 266 provider-observed records. This four-record/three-identity increase is distinct from later refreshes, which update observation timestamps without increasing coverage. The hosted store was not changed.
 
 ## Optional public-player metadata collection
 

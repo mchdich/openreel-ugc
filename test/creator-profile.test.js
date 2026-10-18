@@ -74,6 +74,7 @@ test('creator records retain explicit public identity and counts without inferre
     assert.deepEqual(first.unavailableMetrics, ['likes', 'comments', 'shares']);
     assert.equal(first.sourceType, 'tiktok-creator-embed');
     assert.equal(first.authorUrl, profileUrl);
+    assert.equal(first.avatar, 'https://p16-common-sign.tiktokcdn-us.com/avatar.jpeg');
     assert.deepEqual(first.profileEvidence, { url: profileUrl, fetchedAt: result.fetchedAt });
     assert.equal(first.school, '');
     assert.equal(first.location, '');
@@ -87,6 +88,18 @@ test('creator records retain explicit public identity and counts without inferre
     assert.equal(result.creator.nickname, 'Scout, Suki & Stella');
     assert.equal(result.creator.verified, true);
   });
+});
+
+test('missing or unsafe public avatar URLs remain empty on acquired records', async () => {
+  for (const avatar of [undefined, '', 'http://images.example/avatar.jpg', 'https://user:secret@images.example/avatar.jpg', 'javascript:alert(1)']) {
+    const value = fixture();
+    state(value).userInfo.avatarThumbUrl = avatar;
+    await withFetch(async () => response(value), async () => {
+      const result = await discoverCreator('scout2015');
+      assert.equal(result.creator.avatarUrl, '');
+      assert.ok(result.records.every(record => record.avatar === ''));
+    });
+  }
 });
 
 test('unknown creator metrics remain unavailable while actual zeroes remain known', async () => {

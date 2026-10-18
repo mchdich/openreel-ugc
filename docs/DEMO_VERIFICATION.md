@@ -1,8 +1,8 @@
-# Local demo verification — 1.6.0
+# Local demo verification — 1.7.0
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text and vision use GPT-5.4 mini; transcription uses whisper-1. No provider responses were substituted in the browser acceptance runs.
 
-The tested research, writing, creator-filter and upload paths work. **Full equivalence to the original advert is not established.** Broad new-creator discovery and current emerging-trend coverage remain missing data capabilities. The separately hosted site still runs 1.5.0 and has no provider key; these results concern the local app.
+The tested research, writing, creator-filter and upload paths work. **Full equivalence to the original advert is not established.** Web-assisted candidates can now reach outside the seed index, with independently checked official profile facts. Unrestricted discovery, representative coverage and current emerging-trend evidence remain open. The separately hosted site still runs 1.5.0 and has no provider key; these results concern the local app.
 
 ## Repeat the demo
 
@@ -10,8 +10,20 @@ The tested research, writing, creator-filter and upload paths work. **Full equiv
 2. Click **Make a brief**. The tested follow-up kept the cooking sources and returned hook options and a 20-second shot list in 6.7 seconds.
 3. Start another Corpus chat: **Find UCLA creators with at least 1,000 followers and email in bio**. Two profiles matched; both included public-bio school self-descriptions and email evidence. This includes alumni descriptions and does not verify current enrollment.
 4. Attach a video and ask: **Why did my video only get 200 views? Give me three concrete changes and a stronger opening.** The browser extracts up to eight sampled frames and available audio. The model can suggest edits; it cannot establish why a reported metric occurred. Actual upload and natural-footage results are recorded below.
-5. Choose Live search and ask: **Find NYU creators with at least 1,500 followers and public emails**. The actual discovery and chat endpoints both returned HTTP 200; the flow refreshed three known public profiles and returned one matching creator in 3.8 seconds. Coverage is limited to creators selected from the seed index.
+5. Choose Live search and ask: **Find coffee creators**. With optional web discovery enabled locally, the final actual flow returned @jameshoffmanncoffee, @morgandrinkscoffee and @ryantagcoffee in 7.1 seconds. Start another Live chat: **Find NYU creators with at least 1,500 followers and public emails**. It returned @lizzie.crane with 3,858 observed followers and a public-bio email in 6.2 seconds. Both discovery/chat endpoints returned HTTP 200, all four table avatars loaded and the latest result survived reload. Coverage is a bounded set of checked profiles, not all TikTok.
 6. Open **Trends → Corpus**. The verified default browse now displays seven recurring formats with real source previews. Open a card to inspect its records, provenance and dates; these examples are archival, not emerging trends today.
+
+## Web-assisted creator discovery (1.7.0)
+
+Before acquisition, native read-only corpus checks found zero rows for @morgandrinkscoffee and @jameshoffmanncoffee by either handle or numeric creator ID. The first actual browser Live query obtained model proposals using OpenAI web-search context, independently fetched official TikTok embeds, applied the query and persisted actual matching records. Across the two first flows the corpus increased from 154,424 real records / 4,621 creator identities / 262 provider-observed records to 154,428 / 4,624 / 266. These are four additional videos and three identities, not every video from six checked profiles. No examples, synthetic rows or unverified records entered the store.
+
+The initial coffee run included an irrelevant pet account based on one coffee caption. The fixed fresh creator filter requires all remaining topic terms in handle/bio/niche, or in at least two distinct posts comprising half of that profile's selected sample. Ordinary topic-video searches still find individual matching clips. This is a conservative sample heuristic, not an exhaustive niche classifier. Actual final coffee results excluded the pet account and incidental college-event match. Missing followers or caption-only contacts still fail their corresponding profile requirements.
+
+A real repeat also exposed a Responses detail: an overall completed reply can retain an unfinished search item after `max_tool_calls:1`. The implementation now accepts exactly one completed search and ignores unfinished tool entries as evidence; two completed searches or an incomplete overall response reject. The regression proves unfinished source URLs cannot authorize candidates. A separate review found that a proposed source URL's presence in a search trace does not verify its association with a handle. Returned `webSearchSources` are global proposal context only; verified identity/profile/video facts come from official embeds. No handle-to-page attribution is emitted.
+
+The final actual coffee discovery took 4.355 seconds; discovery plus synthesis took 7.099 seconds and rendered three creators with three loaded avatars. NYU discovery took 4.504 seconds; its final answer took 6.150 seconds and rendered one matching creator/avatar. Both API pairs returned HTTP 200. Reload retained the NYU table; no page errors, saved provider-key patterns or 390px horizontal overflow occurred. Later refreshes left corpus counts unchanged. Provider replies were captured transparently for diagnosis; none were replaced in these browser flows.
+
+Web discovery is explicit server opt-in, using the existing local key. One Responses request, a 25-second provider deadline, strict structured output and a 128 KiB response cap bound the model phase. At most three indexed plus three proposed profiles are checked, with at most three concurrent official GETs; output is capped at 30 actual records. Explicit profile 404s are counted and skipped, while access barriers and malformed responses remain errors. Public paid requests retain bearer/origin checks. There is no automatic retry or stale-result substitution. Generated Worker/D1 tests exercise the same path with controlled transport fixtures; those fixtures prove behavior, not actual discovery quality.
 
 ## Format coverage and measured layout (1.6.0)
 
@@ -57,7 +69,7 @@ The final speech-bearing upload repeat returned HTTP 200 for transcription, crit
 
 ## Final checks
 
-- Node: 317 tests passed, zero failures, including format coverage, combined filters, selection provenance and generated Worker/D1 retrieval.
+- Node: 334 tests passed, zero failures, including web discovery, relevance/compound filters, error boundaries, format coverage, selection provenance and generated Worker/D1 retrieval.
 - Python: 17 passed, one optional test skipped.
 - Portable Worker build completed; publication of this revision to Sites was not requested.
 - The complete browser upload test returned HTTP 200 for transcription and both vision turns. Its first answer arrived about 20.2 seconds after file attachment started.
@@ -69,7 +81,7 @@ The final speech-bearing upload repeat returned HTTP 200 for transcription, crit
 
 A current-week cooking-trend request found no dated records in its comparison windows. The app now reports that gap instead of calling 2024 examples current. The recurring-pattern browser describes its bounded archival sample and is not proof of an emerging trend today.
 
-An actual OpenAI web-search probe returned TikTok topic/channel pages without verifiable individual post links or October 2026 dates. That probe was not integrated or presented as broad discovery. A larger continuously refreshed index or a functioning discovery provider is still needed for the original broad-search and early-trend claims.
+Earlier TikTok-only web searches returned topic/channel pages without verifiable individual post links or October 2026 dates. The later unrestricted web-context path finds candidate handles and independently verifies official profiles, as recorded above. It still does not establish unrestricted TikTok search, complete creator coverage or current posting dates. A larger continuously refreshed dated index or functioning keyword provider is still needed for the original broad-search and early-trend claims.
 
 A further UCLA/contact profile-search probe returned no usable public profile or post URLs. Official public creator embeds returned fresh selected videos and metrics but no posting-date field. These checks do not close current-date or unrestricted discovery coverage.
 
