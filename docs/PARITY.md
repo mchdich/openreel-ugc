@@ -22,6 +22,8 @@ The later [website](https://lightreel.ai/) and [API documentation](https://light
 
 ## Recorded implementation evidence
 
+- **Vision validation recovery (1.16.3):** a closed static category guides the existing single correction under its shared deadline. Two natural stored-frame HTTP requests returned AI reviews; the initial workout failure and original replies are retained. Narrow visual-language/proposed-duration fixes and reviewed negative controls address those reproduced false rejections. Stored-frame success does not establish continuous/auditory understanding, representative accuracy or fresh source access.
+
 - **Source access/recovery (1.16.3):** the next fixed-order current-cohort acquisition hit an actual public-player video 403 after a 200 document, before frames or model calls. Further collection stopped. Denied media now terminates promptly; failed selected sources offer Clear, with controlled Chrome/draft/reload/mobile checks. This improves error recovery without closing current coverage or critique-quality gaps.
 
 - **Reviewed current visual evidence (1.16.2):** four additional source descriptions retain matching original capture receipts and observation times. All 44 associated images were directly inspected; unsupported container, control-motion, ingredient-addition and exercise-count claims were corrected before the field-only apply. A full-store protected hash proves all other source facts and corpus counts unchanged. Seven descriptions across five creator identities improve local coverage, but selected current/prior annotation rates of 5/19 and 2/9 do not establish an emerging format. A post returning no playable geometry now yields a clear source limitation before capture/model work.

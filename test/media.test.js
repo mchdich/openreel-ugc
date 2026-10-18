@@ -512,3 +512,30 @@ test('twelve selected frames fit the unchanged total JPEG budget and exact citat
  assert.throws(()=>validateVideoAttachment(attachment({frames:Array.from({length:13},(_,timestamp)=>({timestamp:timestamp*.5,dataUrl:jpeg()}))})),e=>e.code==='invalid-video'&&e.status===400);
  assert.throws(()=>validateVideoAttachment(attachment({frames:Array.from({length:12},(_,timestamp)=>({timestamp,dataUrl:jpeg(160*1024)}))})),e=>e.code==='invalid-video'&&e.status===413);
 });
+
+test('one vision correction names the failed evidence category without echoing unsafe prose or changing inputs',async t=>{
+ const calls=[];let bad;t.mock.method(globalThis,'fetch',async(_url,options)=>{const body=JSON.parse(options.body);calls.push({body,signal:options.signal});return new Response(JSON.stringify(completion(calls.length===1?bad:narrative())),{headers:{'content-type':'application/json'}});});
+ for(const [category,value]of [['response-shape',narrative({sections:[]})],['source-link',narrative({summary:'Visit https://untrusted.example/private-evidence.'})],['unsupplied-metric',narrative({summary:'The post got 999999 views.'})],['unsupported-performance',narrative({summary:'This edit will double views.'})],['unsupported-audio',narrative({summary:'The narrator speaks quickly.'})],['unsupported-timestamp',narrative({summary:'At 7 seconds the cup appears.'})]]){
+  calls.length=0;bad=value;const video=attachment(),question='Review only the supplied visual evidence.',result=await analyzeVideo(video,question,{OPENAI_API_KEY:'provider-test-secret',OPENAI_VISION_MODEL:'gpt-5.4'});assert.equal(result.mode,'ai');assert.equal(calls.length,2);assert.match(calls[1].body.messages[0].content,new RegExp(`Correction \\(${category}\\)`));assert.deepEqual(calls[1].body.messages[1],calls[0].body.messages[1]);assert.deepEqual(calls[1].body.response_format,calls[0].body.response_format);assert.equal(calls[1].signal,calls[0].signal);assert.equal(calls[1].body.max_completion_tokens,6000);assert.doesNotMatch(calls[1].body.messages[0].content,/untrusted\.example|999999|narrator speaks quickly|provider-test-secret/);assert.deepEqual(video,attachment());
+ }
+});
+
+test('persistent invalid vision output keeps a bounded static reason and never gets a third call',async t=>{
+ let calls=0;t.mock.method(globalThis,'fetch',async()=>{calls++;return new Response(JSON.stringify(completion(narrative({summary:'The narrator speaks quickly.'}))),{headers:{'content-type':'application/json'}});});
+ await assert.rejects(analyzeVideo(attachment(),'Review the visible opening.',{OPENAI_API_KEY:'provider-test-secret',OPENAI_VISION_MODEL:'gpt-5.4'}),e=>e.code==='provider-invalid-response'&&e.status===502&&e.validationRule==='unsupported-audio'&&!/narrator|provider-test-secret/.test(e.message));assert.equal(calls,2);
+});
+
+test('an aborted vision budget cannot start the corrective request after validation',async t=>{
+ const c=new AbortController();let calls=0;t.mock.method(globalThis,'fetch',async()=>{calls++;c.abort();return new Response(JSON.stringify(completion(narrative({summary:'The narrator speaks quickly.'}))),{headers:{'content-type':'application/json'}});});
+ await assert.rejects(analyzeVideo(attachment(),'Review the visible opening.',{OPENAI_API_KEY:'provider-test-secret',OPENAI_VISION_MODEL:'gpt-5.4'},{signal:c.signal}),e=>e.code==='provider-timeout'&&e.status===504);assert.equal(calls,1);
+});
+
+test('frame subjects can communicate visually without authorizing speech by a person in a frame',async()=>{
+ for(const summary of ['The first sampled frames do not yet tell the viewer what the workout is.','The first sampled frames show large text reading “20 ROUNDS” over a full-body gym setup, but they do not yet tell the viewer what the workout is beyond a round count.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Review visible opening information',env)).mode,'ai'));
+ for(const summary of ['The person in the frame tells the recipe.','The first sampled frames show a person reading text, but they do not yet tell the recipe.','The first sampled frames show large text beside two presenters, but they do not yet tell the recipe.','The first sampled frames show large text as the presenters point to it, but they do not tell the recipe.','The first sampled frames show large text reading “20 ROUNDS,” but they do not yet tell the viewer the plan and the narrator speaks quickly.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Review visible opening information',env),'provider-invalid-response',502));
+});
+
+test('an explicit new edit duration may refer to already visible states without inventing an observation time',async()=>{
+ for(const summary of ['Consider a new edit length of 12–18 seconds using the strongest positions already visible.','Test a proposed cut duration of 8–10 seconds using the sampled frames already visible.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Propose a new edit',env)).mode,'ai'));
+ for(const summary of ['Consider a new edit length of 18 seconds when the cup appears.','At a new edit length of 18 seconds the cup appears.','Consider a new edit length of 18 seconds. The cup appears at 18 seconds.','Consider a new edit length of 18 seconds using the positions already visible and this edit will double views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Propose a new edit',env),'provider-invalid-response',502));
+});

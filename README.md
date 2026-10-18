@@ -16,6 +16,8 @@ The starter library is fictional. Free creator collection and deterministic libr
 
 **Source recovery (1.16.3):** denied player media now stops promptly with an actionable source error. **Clear** removes a failed selected source so you can switch research sources or attach a local file. Controlled Chrome tests verify recovery, draft preservation, reload and mobile layout without provider calls. A fresh current-cohort collection stopped at an actual video 403; it did not add evidence or establish current trends. [Measured result](docs/DEMO_VERIFICATION.md#source-access-and-selection-recovery-1163).
 
+**Vision recovery (1.16.3):** the existing bounded correction now receives a static validation reason. Narrow fixes prevent visual “tell” wording and proposed edit lengths from being mistaken for speech or observed times. Real stored coffee/workout frames returned AI critiques in13.466/24.916s; failures and factual limits remain documented. [Actual results and limits](docs/DEMO_VERIFICATION.md#specific-vision-correction-and-validation-recovery-1163).
+
 ## Run locally
 
 Use **Node.js 24 or newer**. There are zero runtime package dependencies; optional corpus storage uses Node’s built-in SQLite.
