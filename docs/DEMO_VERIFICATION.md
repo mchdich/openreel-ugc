@@ -1,4 +1,4 @@
-# Local demo verification — 1.11.0
+# Local demo verification — 1.13.0
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text and vision use GPT-5.4 mini; transcription uses whisper-1. No provider responses were substituted in the browser acceptance runs.
 
