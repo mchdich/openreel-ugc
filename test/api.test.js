@@ -168,3 +168,14 @@ test('provider body transport failures remain outages while malformed delivered 
   globalThis.fetch=async()=>response();const result=await(await handleApi(request({question:'Find beauty creators',records:[record]}),{OPENAI_API_KEY:'private-test-key'})).json();assert.equal(result.mode,'deterministic');assert.match(result.notice,pattern);assert.doesNotMatch(JSON.stringify(result),/private-body-secret|private-test-key/);
  }}finally{globalThis.fetch=old;}
 });
+
+test('exhausted provider credits remain a one-call explicit fallback without leaking the error body',async t=>{
+ let calls=0;t.mock.method(globalThis,'fetch',async()=>{calls++;return new Response(JSON.stringify({error:{code:'credit_balance_exhausted',type:'insufficient_quota',message:'private-billing-detail sk-private-provider-secret'}}),{status:429});});
+ const answer=await(await handleApi(request({question:'Analyze beauty hooks',records:[record]}),{OPENAI_API_KEY:'private-key'})).json();assert.equal(answer.mode,'deterministic');assert.match(answer.notice,/generation credits/i);assert.match(answer.notice,/deterministic research/i);assert.doesNotMatch(JSON.stringify(answer),/private-billing-detail|sk-private-provider-secret|private-key/);assert.equal(answer.sources[0].id,'a');assert.equal(calls,1);
+});
+
+test('rate limits and oversized quota bodies cannot masquerade as a verified credit diagnosis',async t=>{
+ for(const body of [JSON.stringify({error:{code:'rate_limit_exceeded',type:'requests'}}),JSON.stringify({error:{code:'credit_balance_exhausted',padding:'x'.repeat(9000)}}),'not-json-private-provider-body']){
+  let calls=0;t.mock.method(globalThis,'fetch',async()=>{calls++;return new Response(body,{status:429});});const answer=await(await handleApi(request({question:'Analyze beauty hooks',records:[record]}),{OPENAI_API_KEY:'private-key'})).json();assert.equal(answer.mode,'deterministic');assert.match(answer.notice,/provider is unavailable/i);assert.doesNotMatch(answer.notice,/generation credits|private-provider-body/);assert.equal(calls,1);t.mock.restoreAll();
+ }
+});

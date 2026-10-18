@@ -139,3 +139,31 @@ test('explicit creative brief and shot-list requests retain the original researc
 test('a brevity instruction does not demand a new creative-brief deliverable',()=>{
  const result=research(records,'Make this brief.',[{role:'user',content:question}]);assert.notEqual(result.title,'Creative brief');assert.ok(!result.sections.some(s=>/shot list/i.test(s.heading)));assert.deepEqual(result.sources.map(r=>r.id),['cook','cook-again']);
 });
+
+test('text synthesis identifies the actual supplied evidence subset without turning captions or covers into footage',async t=>{
+ const sources=Array.from({length:22},(_,i)=>({id:'source'+i,handle:'source'+i,caption:'Cooking caption '+i,...(i<3?{transcript:'Unverified untimed cooking words.'}:{}),...(i===0?{hook:'Supplied cooking hook label.'}:{}),...(i===21?{thumbnail:'https://example.com/source-cover.jpg',visualDescription:'A supplied description of cooking utensils.',descriptionSource:'user-supplied'}:{}),footageInspected:true}));
+ let context;t.mock.method(globalThis,'fetch',async(_url,init)=>{context=JSON.parse(JSON.parse(init.body).messages.at(-1).content);return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({summary:'Caption wording suggests candidates to test.',sections:[{heading:'Post text',text:'The post caption supplies cooking wording.',sourceIds:['source21']}]})}}]}));});
+ const answer=await(await handleApi(request({question:'Analyze cooking hooks',records:sources}),{OPENAI_API_KEY:'test-only'})).json();assert.equal(answer.mode,'ai');
+ assert.equal(context.evidenceScope.footageInspected,false);assert.equal(context.evidenceScope.providedSources,20);assert.equal(context.evidenceScope.matchingSources,22);assert.deepEqual(context.evidenceScope.fieldCounts,{hook:1,caption:20,transcript:3,visualDescription:1});
+ assert.equal(context.sources[0].id,'source21');assert.deepEqual(context.sources[0].evidenceFields,['caption','visualDescription']);assert.deepEqual(context.sources.find(s=>s.id==='source0').evidenceFields,['hook','caption','transcript']);
+ assert.match(answer.notice,/20 of 22/);assert.match(answer.notice,/no footage was inspected/i);assert.match(answer.notice,/captions.*untimed transcripts.*opening/i);
+});
+
+test('AI brief scope remains application-owned when provider output tries to replace its notice',async t=>{
+ t.mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({summary:'Proposed recipe brief.',sections:[{heading:'Proposed shot list',text:'Film a close view of the finished dish.',sourceIds:['cook']}],notice:'All footage was watched.'})}}]})));
+ const answer=await(await handleApi(request({question:'Make a brief.',history:[{role:'user',content:question}],records}),{OPENAI_API_KEY:'test-only'})).json();assert.equal(answer.mode,'ai');assert.equal(answer.title,'Creative brief');assert.match(answer.notice,/2 of 2/);assert.match(answer.notice,/no footage was inspected/i);assert.doesNotMatch(answer.notice,/All footage was watched/);
+});
+
+test('seeded excerpts cannot smuggle omitted records into the bounded evidence subset',async t=>{
+ const sources=Array.from({length:22},(_,i)=>({id:'bounded'+i,handle:'bounded'+i,caption:'Cooking unique evidence marker '+i,...(i>=2?{thumbnail:'https://example.com/cover'+i+'.jpg'}:{})}));
+ let context;t.mock.method(globalThis,'fetch',async(_url,init)=>{context=JSON.parse(JSON.parse(init.body).messages.at(-1).content);return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({summary:'Supplied caption wording.',sections:[]})}}]}));});
+ const answer=await(await handleApi(request({question:'Analyze cooking hooks',records:sources}),{OPENAI_API_KEY:'test-only'})).json();assert.equal(answer.mode,'ai');const ids=new Set(context.sources.map(s=>s.id));assert.equal(ids.size,20);assert.ok(!ids.has('bounded0'));assert.ok(!ids.has('bounded1'));
+ for(const section of context.sections)assert.ok(!section.sourceIds||section.sourceIds.every(id=>ids.has(id)));
+ for(const i of [0,1])assert.ok(!JSON.stringify(context.sections).includes(sources[i].caption+'”'));
+});
+
+test('brief source-text seeds keep their originating record inside the same twenty-source budget',async t=>{
+ const sources=Array.from({length:22},(_,i)=>({id:'briefseed'+i,handle:'briefseed'+i,caption:'Cooking source '+i,transcript:'Cooking script from source '+i+'. Finish the dish.',...(i>=2?{thumbnail:'https://example.com/cover'+i+'.jpg'}:{})}));
+ let context;t.mock.method(globalThis,'fetch',async(_url,init)=>{context=JSON.parse(JSON.parse(init.body).messages.at(-1).content);return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({summary:'Proposed source-based brief.',sections:[]})}}]}));});
+ const answer=await(await handleApi(request({question:'Make a brief.',history:[{role:'user',content:'Analyze cooking hooks'}],records:sources}),{OPENAI_API_KEY:'test-only'})).json();assert.equal(answer.mode,'ai');assert.equal(context.sources.length,20);assert.ok(context.sources.some(s=>s.id==='briefseed0'));assert.match(JSON.stringify(context.sections),/Cooking script from source 0/);assert.equal(context.evidenceScope.providedSources,20);
+});

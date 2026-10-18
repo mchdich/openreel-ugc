@@ -22,6 +22,8 @@ The later [website](https://lightreel.ai/) and [API documentation](https://light
 
 ## Recorded implementation evidence
 
+- **Text-evidence grounding (1.16.5):** detailed source records and seeded excerpts share a bounded subset, with explicit field provenance and application-owned scope. Real mini/full model comparisons retain their errors; the local text configuration uses GPT-5.4 after observed field-attribution improvement. Caption/transcript synthesis is not verified opening-footage analysis, and broader factual accuracy remains open.
+
 - **Brief deliverable recovery (1.16.4):** an actual browser returned research instead of a brief for the typed “Make a brief” request. Shared noun-form intent and explicit synthesis guidance correct that path while preserving source scope and distinguishing brevity instructions. A real browser fix returned original hooks and a proposed20-second shot list. Response quality and source-caption inference limits remain recorded. This does not close other parity requirements.
 
 - **Vision validation recovery (1.16.3):** a closed static category guides the existing single correction under its shared deadline. Two natural stored-frame HTTP requests returned AI reviews; the initial workout failure and original replies are retained. Narrow visual-language/proposed-duration fixes and reviewed negative controls address those reproduced false rejections. Stored-frame success does not establish continuous/auditory understanding, representative accuracy or fresh source access.

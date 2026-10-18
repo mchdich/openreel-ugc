@@ -1,6 +1,6 @@
 {
   "name": "openreel",
-  "version": "1.16.4",
+  "version": "1.16.5",
   "description": "An independent, open source UGC research workspace inspired by Lightreel",
   "type": "module",
   "private": true,
