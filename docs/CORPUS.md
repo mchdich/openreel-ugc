@@ -32,6 +32,12 @@ That command uses an already acquired/imported database; it does not download or
 
 A direct 1,000-record skincare subset produced six recurring-format groups with 152 distinct cited records. Clear phrases in upstream model descriptions supplied the pattern evidence; original `format` and transcript fields remained unchanged. The retained windows cover 2024 supplied calendar dates, with unknown timezones disclosed. These are archival patterns, not evidence of emergence now.
 
+### Default pattern browsing
+
+`POST /api/corpus/patterns` accepts `{ "query": "" }`. An empty query reads one general page of at most 100 real records and seven format probes of at most 30 distinct creators each, sequentially. From at most 310 unique candidates, shared evidence rules form eligible multi-creator groups. Two distinct creator anchors per group are reserved before filling up to 100 unique records across groups; supplied covers receive selection priority. The response includes `selection.method`, `queryCount` and `candidateRecords` separately from global corpus statistics. Selection is purposeful format coverage, not random sampling or a current trend ranking. Unsupported or single-creator groups stay absent. No corpus records or inferred format labels are written.
+
+A nonempty query uses the normal bounded 100-record search and preserves its topic/profile constraints. The browser keeps selection provenance with that result and clears it on the next query/source change. The actual local default request returned seven groups from 86 records and 309 candidates; all 20 fan covers loaded. Fifteen metadata-only public-player merges supplied additional identities and previews without changing archival fields or counts. See [the current demo report](DEMO_VERIFICATION.md).
+
 ## Hosted D1 corpus
 
 The Worker binds `env.DB` through `openWorkerCorpus(DB)` from `lib/corpus-worker.js`. The source hosting manifest uses `d1: "DB"`. Deployment must apply the supplied `drizzle/0000_corpus.sql` and its genuine Drizzle metadata before requests use the database. Sites packaging carries this directory to `dist/.openai/drizzle/`. The adapter never creates or alters tables inside an API request.

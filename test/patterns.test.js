@@ -11,7 +11,7 @@ const module=()=>import('../public/patterns.js');
 test('pattern retrieval is bounded and preserves supplied evidence and unavailable metrics',async()=>{
  const {fetchPatternSample}=await module();let sent;
  const sample=await fetchPatternSample(async(path,body,signal)=>{sent={path,body,signal};return result([row('one',{visualDescription:'The creator is unboxing a parcel.',descriptionSource:'upstream-model'})]);},'  pottery  ',new AbortController().signal);
- assert.equal(sent.path,'/api/corpus/search');assert.deepEqual(sent.body,{query:'pottery',limit:100});assert.equal(sent.signal.aborted,false);
+ assert.equal(sent.path,'/api/corpus/patterns');assert.deepEqual(sent.body,{query:'pottery'});assert.equal(sent.signal.aborted,false);
  assert.equal(sample.records[0].id,'one');assert.equal(sample.records[0].visualDescription,'The creator is unboxing a parcel.');assert.equal(sample.records[0].descriptionSource,'upstream-model');
  assert.deepEqual(sample.records[0].unavailableMetrics,['followers','views','likes','comments','shares']);assert.equal(sample.corpus.byKind.real,154424);
 });
@@ -28,11 +28,26 @@ test('empty real results remain empty and do not substitute fictional library da
  const {fetchPatternSample}=await module();const sample=await fetchPatternSample(async()=>result([]),'not found');assert.deepEqual(sample.records,[]);assert.equal(sample.corpus.total,154424);
 });
 
+test('sample selection provenance follows successful retrieval and is cleared before another query',async()=>{
+ const {createPatternController,fetchPatternSample}=await module();
+ const selection={method:'format-stratified',queryCount:8,candidateRecords:120};
+ const sample=await fetchPatternSample(async()=>result([row()],{selection}));
+ assert.deepEqual(sample.selection,selection);
+ const controller=createPatternController({debounceMs:100,request:async()=>result([row()],{selection})});
+ controller.configure(true);controller.enter();await tick();assert.deepEqual(controller.snapshot().selection,selection);
+ controller.search('pottery');assert.equal(controller.snapshot().selection,null);controller.leave();
+});
+
+test('malformed selection metadata cannot turn into a claimed sampling method',async()=>{
+ const {fetchPatternSample}=await module();
+ for(const selection of [null,{method:'random',queryCount:8,candidateRecords:120},{method:'query',queryCount:0,candidateRecords:1},{method:'query',queryCount:9,candidateRecords:1},{method:'query',queryCount:1,candidateRecords:0},{method:'query',queryCount:1,candidateRecords:311}])await assert.rejects(fetchPatternSample(async()=>result([row()],{selection})),/selection/i);
+});
+
 test('configured corpus becomes the default on entry while explicit Library survives delayed status',async()=>{
  const {createPatternController}=await module();const requests=[];
  const controller=createPatternController({request:async(path,body)=>{requests.push(body);return result();}});
  controller.configure(true);assert.equal(controller.snapshot().source,'corpus');assert.equal(requests.length,0);
- controller.enter();await tick();assert.equal(controller.snapshot().status,'ready');assert.deepEqual(requests,[{query:'',limit:100}]);
+ controller.enter();await tick();assert.equal(controller.snapshot().status,'ready');assert.deepEqual(requests,[{query:''}]);
  controller.leave();
  const delayed=createPatternController({request:async()=>{throw new Error('must not retrieve');}});delayed.enter();delayed.chooseSource('library');delayed.configure(true);await tick();assert.equal(delayed.snapshot().source,'library');assert.equal(delayed.snapshot().status,'idle');
  const saved=createPatternController({request:async()=>result(),source:'library'});saved.configure(true);saved.enter();assert.equal(saved.snapshot().source,'library');

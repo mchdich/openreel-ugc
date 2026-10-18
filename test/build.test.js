@@ -32,5 +32,10 @@ test('portable Worker binds its hosted corpus through D1 without runtime schema 
     const {default:worker}=await import(new URL('../dist/server/index.js',import.meta.url));
     const response=await worker.fetch(new Request('https://d1-build.example/api/status'),{DB:binding});assert.equal((await response.json()).corpusAvailable,true);
     const stats=await worker.fetch(new Request('https://d1-build.example/api/corpus/stats'),{DB:binding});assert.equal(stats.status,200);assert.equal((await stats.json()).corpus.total,0);assert.equal(writes,0);
+    const {openWorkerCorpus}=await import('../lib/corpus-worker.js');
+    await openWorkerCorpus(binding).upsert(Array.from({length:4},(_,i)=>({id:`build-${i}`,handle:`@build_${i}`,creatorId:String(100+i),caption:'Controlled build fixture',format:i<2?'Unboxing':'Day in the life',url:`https://www.tiktok.com/@build_${i}/video/${100+i}`,sourceType:'test-fixture',fetchedAt:'2024-01-01T00:00:00Z',demo:false})),{kind:'real',source:'controlled build test'});
+    const beforeBrowse=writes;
+    const patterns=await worker.fetch(new Request('https://d1-build.example/api/corpus/patterns',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({query:''})}),{DB:binding});
+    assert.equal(patterns.status,200);const sample=await patterns.json();assert.equal(sample.records.length,4);assert.equal(sample.selection.method,'format-stratified');assert.equal(sample.corpus.byKind.real,4);assert.equal(writes,beforeBrowse);
   }finally{db.close();}
 });

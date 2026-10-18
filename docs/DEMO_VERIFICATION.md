@@ -1,4 +1,4 @@
-# Local demo verification — 1.5.2
+# Local demo verification — 1.6.0
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text and vision use GPT-5.4 mini; transcription uses whisper-1. No provider responses were substituted in the browser acceptance runs.
 
@@ -11,6 +11,19 @@ The tested research, writing, creator-filter and upload paths work. **Full equiv
 3. Start another Corpus chat: **Find UCLA creators with at least 1,000 followers and email in bio**. Two profiles matched; both included public-bio school self-descriptions and email evidence. This includes alumni descriptions and does not verify current enrollment.
 4. Attach a video and ask: **Why did my video only get 200 views? Give me three concrete changes and a stronger opening.** The browser extracts up to eight sampled frames and available audio. The model can suggest edits; it cannot establish why a reported metric occurred. Actual upload and natural-footage results are recorded below.
 5. Choose Live search and ask: **Find NYU creators with at least 1,500 followers and public emails**. The actual discovery and chat endpoints both returned HTTP 200; the flow refreshed three known public profiles and returned one matching creator in 3.8 seconds. Coverage is limited to creators selected from the seed index.
+6. Open **Trends → Corpus**. The verified default browse now displays seven recurring formats with real source previews. Open a card to inspect its records, provenance and dates; these examples are archival, not emerging trends today.
+
+## Format coverage and measured layout (1.6.0)
+
+The previous default browse used the first 100 records in index order and exposed one eligible group. The new read-only sampler considers at most 310 candidates: a general 100-record page and up to 30 distinct creators for each of seven format queries. Existing evidence rules still require two creator identities and a supplied format label or explicit attributed description. Two creator anchors per eligible group precede a bounded fill to at most 100 unique records. Nonempty topic queries keep the ordinary search and all parsed filters. No formats are written into corpus records.
+
+The actual browser request returned 86 real records from 309 unique candidates in 1.964 seconds. It rendered seven groups: Before / after, Product review, Day in the life, Unboxing, Step-by-step tutorial, Product demonstration and Get ready with me. All 20 supplied fan images loaded; the last group has two creators and therefore two images. No fictional records, response substitutes or generated thumbnails entered that run. The visible note identifies purposeful format coverage and archival dates. Sample shares, averages and group counts are not corpus-wide estimates or current rankings.
+
+Sixteen ordinary public-player navigations resolved 15 post identities, covers and author-linked avatars for those actual records. One unavailable post remained unchanged. The metadata-only merge preserved all protected JSON/SQL fields, corpus statistics, archival text, dates, metrics, verification and licenses; native SQLite hash checks passed. These signed source URLs may expire and external posts may become unavailable.
+
+The attached wide composer was measured against the launch frame's 1330 × 538 component at a normalized 762px width. Its final height is 308.641px versus 308.238px in the measured reference. Preview, avatar, badge and submit offsets/sizes differ by at most 0.753px. This is measured geometry, not pixel identity: original/user imagery, controls, text and branding differ. The activity badge counts successfully reviewed attachments. At viewport widths 761, 770, 820, 1000 and 1512, both attached and unattached states with Deep selected keep Submit inside the border. The tested 390px layout has no page overflow; attachment removal restores its action. No page errors occurred.
+
+Independent review found and reproduced a day-in-the-life query parsing error and a narrow-desktop badge overflow. Both were fixed and rechecked. The generated Worker/D1 route test also retrieves actual SQLite fixture records without request-side writes; fixtures prove behavior, not corpus coverage.
 
 ## Browser and provider evidence
 
@@ -44,7 +57,7 @@ The final speech-bearing upload repeat returned HTTP 200 for transcription, crit
 
 ## Final checks
 
-- Node: 309 tests passed, zero failures, including four new visual-selection regressions.
+- Node: 317 tests passed, zero failures, including format coverage, combined filters, selection provenance and generated Worker/D1 retrieval.
 - Python: 17 passed, one optional test skipped.
 - Portable Worker build completed; publication of this revision to Sites was not requested.
 - The complete browser upload test returned HTTP 200 for transcription and both vision turns. Its first answer arrived about 20.2 seconds after file attachment started.

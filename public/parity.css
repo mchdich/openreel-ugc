@@ -97,6 +97,18 @@
 .additional-sources>summary{cursor:pointer;font-size:12px;font-weight:500;color:#888}
 .additional-sources[open]>summary{margin-bottom:12px}
 
+/* Normalize the launch demo's attached composer at wide desktop sizes. */
+@media(min-width:1000px){
+ .home .corpus-badge{min-width:217px}
+ .home .composer.has-attachment{padding:26px 31px 20px 30px;border-radius:24px}
+ .home .has-attachment .composer-input-row{gap:13px}
+ .home .has-attachment .composer-avatar{transform:translateY(-5px)}
+ .home .has-attachment .attachment-preview{margin-bottom:6px;min-height:158px}
+ .home .has-attachment .attachment-preview video{width:89px;height:158px}
+ .home .has-attachment textarea{font-size:23px;min-height:44.65px;height:44.65px}
+ .home .has-attachment .attachment{display:none}
+}
+
 /* Missing source images keep their supplied text and creator identity readable. */
 .video-cover:not(:has(.video-thumbnail)) .cover-top,.video-cover:not(:has(.video-thumbnail)) .cover-bottom{color:#555}
 .video-cover:not(:has(.video-thumbnail)) .cover-bottom>span{color:#777}
