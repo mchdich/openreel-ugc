@@ -212,3 +212,24 @@ test('browser extraction never treats missing/unsupported audio or invalid metad
   });
   await assert.rejects(extractAudio(new File(['text'], 'notes.txt', { type: 'text/plain' })), /audio|video/i);
 });
+
+test('parent cancellation prevents a transcription request and aborts an in-flight real provider',async()=>{
+ const env={OPENAI_API_KEY:'controlled-key',OPENAI_TRANSCRIPTION_MODEL:'controlled-transcribe'},before=new AbortController();before.abort();
+ await withFetch(async()=>assert.fail('No request after cancellation'),()=>assert.rejects(transcribeAudio(chunk(),env,{signal:before.signal}),error=>error.name==='AbortError'));
+ let entered;const started=new Promise(resolve=>{entered=resolve;}),controller=new AbortController();
+ await withProvider(async(request,response)=>{for await(const _ of request){}entered();await new Promise(resolve=>response.on('close',resolve));},async base=>{
+  const pending=transcribeAudio(chunk(),{...env,OPENAI_BASE_URL:base},{signal:controller.signal});await started;controller.abort();
+  await assert.rejects(pending,error=>error.code==='provider-timeout'&&error.status===504);
+ });
+});
+
+test('nonverbal symbols never become recognized words while Unicode speech and spoken numbers remain',async()=>{
+ const env={OPENAI_API_KEY:'controlled-key',OPENAI_TRANSCRIPTION_MODEL:'controlled-transcribe'};
+ for(const [text,expected]of [['♪',''],[' ♫ … 👏 ',''],['こんにちは。','こんにちは。'],['مرحبا','مرحبا'],['200','200'],['♪ Coffee for here.','♪ Coffee for here.']])await withFetch(async()=>new Response(JSON.stringify({text}),{headers:{'content-type':'application/json'}}),async()=>assert.equal((await transcribeAudio(chunk(),env)).text,expected));
+});
+
+test('a recognizer reporting no detected language cannot supply alleged spoken words',async()=>{
+ const env={OPENAI_API_KEY:'controlled-key',OPENAI_TRANSCRIPTION_MODEL:'gpt-transcribe'};
+ for(const [body,expected]of [[{text:'Unreliable invented recipe.',languages:[]},''],[{text:'Coffee.',languages:[{code:'en'}]},'Coffee.'],[{text:'こんにちは。',languages:[{code:'ja'}]},'こんにちは。'],[{text:'Legacy supplied words.'},'Legacy supplied words.']])await withFetch(async()=>new Response(JSON.stringify(body),{headers:{'content-type':'application/json'}}),async()=>assert.equal((await transcribeAudio(chunk(),env)).text,expected));
+ for(const languages of [null,{},['en'],[{code:''}],[{code:'not a language'}]])await withFetch(async()=>new Response(JSON.stringify({text:'alleged words',languages}),{headers:{'content-type':'application/json'}}),()=>assert.rejects(transcribeAudio(chunk(),env),error=>error.code==='provider-invalid-response'));
+});

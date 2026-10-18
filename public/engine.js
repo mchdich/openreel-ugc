@@ -80,18 +80,39 @@ export function normalizeVisualEvidence(value,record){
   if(record.descriptionSource!=='openreel-vision'||!record.visualDescription)throw new Error('Invalid sampled-frame visual evidence.');
   return normalizeCapturedFrames(value,record);
 }
+function validateCaptureIdentity(value,record,bad){
+  let url;try{url=new URL(value.sourceUrl);}catch{throw bad();}
+  const id=url.pathname.match(/^\/@[a-z0-9_][a-z0-9_.]{0,79}\/video\/(\d{1,30})$/i)?.[1];
+  if(url.protocol!=='https:'||url.hostname!=='www.tiktok.com'||url.username||url.password||url.port||url.search||url.hash||url.href!==value.sourceUrl||record.id!==`tiktok-${id}`||!id||typeof value.creatorId!=='string'||!/^\d{1,30}$/.test(value.creatorId)||record.creatorId&&record.creatorId!==value.creatorId)throw bad();
+  if(typeof value.observedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value.observedAt)||!Number.isFinite(Date.parse(value.observedAt))||new Date(value.observedAt).toISOString()!==value.observedAt||Date.parse(value.observedAt)<946684800000||record.postedAt&&Date.parse(record.postedAt)>Date.parse(value.observedAt)+300000)throw bad();
+}
 /** Shared source receipt; a critique receipt does not annotate the corpus. */
 export function normalizeCapturedFrames(value,record){
   const bad=()=>new Error('Invalid sampled-frame visual evidence.');
   const shape=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
   if(!shape(value,['sourceType','sourceUrl','creatorId','observedAt','duration','frames'])||value.sourceType!=='tiktok-public-player-frames'||record.demo!==false)throw bad();
-  let url;try{url=new URL(value.sourceUrl);}catch{throw bad();}
-  const id=url.pathname.match(/^\/@[a-z0-9_][a-z0-9_.]{0,79}\/video\/(\d{1,30})$/i)?.[1];
-  if(url.protocol!=='https:'||url.hostname!=='www.tiktok.com'||url.username||url.password||url.port||url.search||url.hash||url.href!==value.sourceUrl||record.id!==`tiktok-${id}`||!id||typeof value.creatorId!=='string'||!/^\d{1,30}$/.test(value.creatorId)||record.creatorId&&record.creatorId!==value.creatorId)throw bad();
-  if(typeof value.observedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value.observedAt)||!Number.isFinite(Date.parse(value.observedAt))||new Date(value.observedAt).toISOString()!==value.observedAt||Date.parse(value.observedAt)<946684800000||record.postedAt&&Date.parse(record.postedAt)>Date.parse(value.observedAt)+300000)throw bad();
+  validateCaptureIdentity(value,record,bad);
   if(!Number.isFinite(value.duration)||value.duration<=0||value.duration>600||!Array.isArray(value.frames)||value.frames.length<1||value.frames.length>8)throw bad();
   let prior=-1;const frames=value.frames.map(frame=>{if(!shape(frame,['timestamp','sha256'])||!Number.isFinite(frame.timestamp)||frame.timestamp<0||frame.timestamp>value.duration||frame.timestamp<=prior||typeof frame.sha256!=='string'||!/^[a-f0-9]{64}$/.test(frame.sha256))throw bad();prior=frame.timestamp;return {timestamp:frame.timestamp,sha256:frame.sha256};});
   return {sourceType:value.sourceType,sourceUrl:value.sourceUrl,creatorId:value.creatorId,observedAt:value.observedAt,duration:value.duration,frames};
+}
+/** Bounded opening PCM provenance. Word timing and raw acoustics are not inferred. */
+export function normalizeCapturedAudio(value,record,videoDuration){
+  const bad=()=>new Error('Invalid captured source-audio evidence.'),keys=['sourceType','sourceUrl','creatorId','observedAt','duration','sourceStart','sourceEnd','sha256'];
+  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==keys.length||!keys.every(k=>Object.hasOwn(value,k))||value.sourceType!=='tiktok-public-player-audio'||record.demo!==false)throw bad();
+  validateCaptureIdentity(value,record,bad);
+  if(!Number.isFinite(videoDuration)||videoDuration<=0||videoDuration>600||!Number.isFinite(value.duration)||value.duration<=0||value.duration>30||Math.abs(value.duration*16000-Math.round(value.duration*16000))>.00001||!Number.isFinite(value.sourceStart)||value.sourceStart<0||value.sourceStart>.1||!Number.isFinite(value.sourceEnd)||value.sourceEnd<=value.sourceStart||value.sourceEnd>videoDuration+.1||Math.abs(value.sourceEnd-value.sourceStart-value.duration)>1||typeof value.sha256!=='string'||!/^[a-f0-9]{64}$/.test(value.sha256))throw bad();
+  return {sourceType:value.sourceType,sourceUrl:value.sourceUrl,creatorId:value.creatorId,observedAt:value.observedAt,duration:value.duration,sourceStart:value.sourceStart,sourceEnd:value.sourceEnd,sha256:value.sha256};
+}
+export function normalizeSourceAudio(value,record,videoDuration){
+  const bad=()=>new Error('Invalid source-speech metadata.');
+  if(!value||typeof value!=='object'||Array.isArray(value))throw bad();
+  if(value.status==='unavailable'){
+    if(Object.keys(value).length!==2||!['unsupported','source-not-ready','no-audio-track','suspended','unsupported-sample-rate','invalid-samples','capture-timeout','playback-stalled','silent-or-unavailable','protected-or-unavailable','playback-unavailable','capture-error'].includes(value.reason))throw bad();
+    return {status:'unavailable',reason:value.reason};
+  }
+  if(value.status!=='available'||Object.keys(value).length!==4||value.transcriptionSource!=='machine-transcription'||typeof value.transcript!=='string'||value.transcript.length>12000||value.transcript!==value.transcript.trim()||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value.transcript))throw bad();
+  return {status:'available',capture:normalizeCapturedAudio(value.capture,record,videoDuration),transcript:value.transcript,transcriptionSource:'machine-transcription'};
 }
 export function hasVisualDescriptionEvidence(record){
   if(!record||typeof record.visualDescription!=='string'||!record.visualDescription.trim())return false;

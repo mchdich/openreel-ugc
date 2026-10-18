@@ -73,3 +73,22 @@ test('cancellation while launch is pending waits for the owned late browser to c
  const chromium={launch:async()=>{await new Promise(r=>setTimeout(r,150));return {newContext:async()=>{contexts++;assert.fail('No page after cancellation');},close:async()=>{await new Promise(r=>setTimeout(r,650));closed=true;}};}};
  const pending=call('capturePublicPlayer',chromium,source(0),{signal:c.signal}).catch(e=>e);setTimeout(()=>c.abort(),20);const result=await pending;assert.equal(result.code,'CAPTURE_CANCELLED');assert.equal(closed,true,'Cancelled request must account for its late-starting browser');assert.equal(contexts,0);
 });
+
+test('optional opening-audio sampling precedes frame seeks and rechecks source access before releasing anything',async()=>{
+ for(const barrier of [false,true]){
+  let audioReads=0,frameReads=0,closed=0;
+  const page={setDefaultTimeout(){},on(){},url:()=>`https://www.tiktok.com/player/v1/1000?autoplay=1&muted=1`,goto:async()=>({status:()=>200}),waitForFunction:async()=>{},evaluate:async()=>({links:[{href:url(0)},{href:'https://www.tiktok.com/@visual_0'}],images:[],visibleChallenge:barrier&&audioReads>0}),locator:()=>({evaluate:async(fn,arg)=>arg===undefined?{duration:10,width:720,height:1280}:typeof arg==='object'?(audioReads++,{status:'unavailable',reason:'protected-or-unavailable'}):(frameReads++,{timestamp:arg,dataUrl:'data:image/jpeg;base64,/9j/2Q=='})})};
+  const chromium={launch:async()=>({newContext:async()=>({newPage:async()=>page,newCDPSession:async()=>({send:async()=>{},on(){}})}),close:async()=>{closed++;}})};
+  if(barrier){await assert.rejects(call('capturePublicPlayer',chromium,source(0),{audioSeconds:1}),error=>error.code==='PLAYER_BARRIER');assert.equal(frameReads,0);}else{const result=await call('capturePublicPlayer',chromium,source(0),{audioSeconds:1});assert.deepEqual(result.audioCapture,{status:'unavailable',reason:'protected-or-unavailable'});assert.equal(frameReads,8);}
+  assert.equal(audioReads,1);assert.equal(closed,1);
+ }
+});
+
+
+test('a challenge during pending opening audio stops capture before frame reads or audio release',async()=>{
+ let audioStarted=false,closed=0,frameReads=0,readsDuringAudio=0,finishAudio;
+ const page={setDefaultTimeout(){},on(){},url:()=>`https://www.tiktok.com/player/v1/1000?autoplay=1&muted=1`,goto:async()=>({status:()=>200}),waitForFunction:async()=>{},evaluate:async()=>({links:[{href:url(0)},{href:'https://www.tiktok.com/@visual_0'}],images:[],visibleChallenge:audioStarted&&++readsDuringAudio>0}),locator:()=>({evaluate:async(fn,arg)=>arg===undefined?{duration:10,width:720,height:1280}:typeof arg==='object'?(audioStarted=true,await new Promise(resolve=>{finishAudio=resolve;})):(frameReads++,{timestamp:arg,dataUrl:'data:image/jpeg;base64,/9j/2Q=='})})};
+ const chromium={launch:async()=>({newContext:async()=>({newPage:async()=>page,newCDPSession:async()=>({send:async()=>{},on(){}})}),close:async()=>{closed++;finishAudio?.({status:'unavailable',reason:'capture-error'});}})};
+ const started=performance.now();await assert.rejects(call('capturePublicPlayer',chromium,source(0),{audioSeconds:1,timeoutMs:2000}),error=>error.code==='PLAYER_BARRIER');
+ assert.ok(performance.now()-started<1500,'Access monitoring must stop while audio is pending');assert.equal(readsDuringAudio,1);assert.equal(frameReads,0);assert.equal(closed,1);
+});

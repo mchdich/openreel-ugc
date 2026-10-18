@@ -374,3 +374,74 @@ test('one invalid vision narrative is corrected within the same deadline',async 
   assert.equal(result.mode,'ai');assert.equal(calls,2);assert.deepEqual(signals,[45000]);
  });
 });
+
+
+test('video critique explains the limits of a user-reported performance count even when the provider omits them',async()=>{
+ await withProvider(respond(narrative()),async env=>{
+  const result=await analyzeVideo(attachment(),'Why did my video only get 200 views?',env),limits=result.sections.at(-1).text;
+  assert.match(limits,/user[- ]reported/i);assert.match(limits,/cannot establish.*(?:cause|why)/i);assert.doesNotMatch(limits,/200 views/);
+ });
+});
+
+test('ordinary prep framings and proposed example copy do not become social metrics',async()=>{
+ for(const summary of ['Consider tightening the transition between those two prep views.','Test new copy like “Earl Grey milk” and “Shake, then strain.”'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give editing tests',env)).mode,'ai'));
+ for(const summary of ['The prep views reached 999999.','Test new copy like “999999 likes.”','This edit will double prep views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give editing tests',env),'provider-invalid-response',502));
+});
+
+test('metric counts do not consume the first letter of following prose and negative evidence stays scoped',async()=>{
+ for(const summary of ['The sampled frames do not establish why the view count was 200, but they show a glass.','The visible state does not establish why the video reached a particular view count.','I cannot establish why the view count was 200 but the glass is visible.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Why did this get 200 views?',env)).mode,'ai'));
+ for(const summary of ['The frames do not establish why the view count was 999999.','The frames do not establish why the view count was 200 but this edit will double views.','The frames do not establish why the view count was 200 and this edit will guarantee more views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Why did this get 200 views?',env),'provider-invalid-response',502));
+});
+
+
+test('written magnitude suffixes retain their complete numeric meaning',async()=>{
+ for(const [summary,question]of [['You reported a view count of 200 million.','You reported 200m views'],['You reported 2 thousand views.','You reported 2000 views'],['You reported a view count of 2 billion.','You reported 2b views']])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),question,env)).mode,'ai'));
+ await withProvider(respond(narrative({summary:'You reported a view count of 200 million.'})),env=>rejectsCode(()=>analyzeVideo(attachment(),'You reported 200 views',env),'provider-invalid-response',502));
+});
+
+test('compound camera descriptions and shared visual space stay distinct from social counts',async()=>{
+ for(const summary of ['Record a context shot before the detail views.','The middle stays focused on machine-and-tools views.','The machine, hands and text all share the same space.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
+ for(const summary of ['The detail views are 999999.','You reported 999999 machine-and-tools views.','This will double counter views.','The machine and hands share the same space and this edit will double views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual edit tests',env),'provider-invalid-response',502));
+});
+
+test('ordinary camera-view plurals accept varied descriptors without an endless noun allowlist',async()=>{
+ for(const summary of ['Consider removing one of the near-identical workstation views.','The samples repeat similar views of the grinder and steam wand.','A sequence of wider interior views frames the desk.','The tabletop views show the package.','The visible counter views show a cup.','Try getting a wider view of the counter.','Two glasses appear across several workstation views.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
+ for(const summary of ['The video got many views.','The post received views.','Views were high.','The video has lots of views.','Organic views were strong.','This video has views.','I cannot explain the count but views are high.','I cannot determine why views were low but organic views were strong.','I cannot explain the count but views will be high.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual edit tests',env),'provider-invalid-response',502));
+});
+
+test('unfamiliar view qualifiers cannot hide an invented reported count or turn time labels into counts',async()=>{
+ for(const summary of ['You reported 999999 workstation views.','You reported 999999 sponsored views.','You reported 999999 similar views.','You reported 999999 really great machine views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Why 200 views?',env),'provider-invalid-response',502));
+ for(const summary of ['At 0 seconds the sample shows a clear machine view.','The 0-second machine view shows a cup.','The 5.5s camera views show a cup.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
+});
+
+test('visual ability to tell components apart is distinct from a claim of source speech or voice discrimination',async()=>{
+ for(const summary of ['Add labels so the viewer can tell each station apart faster.','You can tell the two containers apart in the samples.','Voices were not analyzed.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
+ for(const summary of ['The person tells the recipe.','The viewer can tell the voices apart.','You can tell the music notes apart.','Add labels so the viewer can tell each station apart and this edit will double views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual edit tests',env),'provider-invalid-response',502));
+});
+
+test('explicit evidence units and verified frame-time lists cannot become social view counts',async()=>{
+ for(const summary of ['The 2 frames include close-up views of the cup.','The 2 samples provide overhead views of the counter.','The 2 images contain workstation views.','The sampled frames at 0 and 5.5 repeat similar views of the counter.','The clip has views of the grinder.','The workstation view at 5.5 shows a cup.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
+ for(const summary of ['The clip got views of the grinder.','The video has 200 workstation views.','The workstation view at 999999 shows a cup.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Why200views?',env),'provider-invalid-response',502));
+});
+
+test('every prose frame-list time must be a supplied sample, including bare first and middle times',async()=>{
+ for(const summary of ['The sampled frames at 0 and 5.5 repeat similar views.','The images at 0, and 5.5 show the counter.','The timestamps at 0s or 5.5s show the cup.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
+ for(const summary of ['The sampled frames at 999999 and 5.5 repeat similar views.','The frames at 0, 999999 and 5.5 show the counter.','The images at 0 and 999999 show the cup.','The sample at 999999 shows the cup.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual edit tests',env),'provider-invalid-response',502));
+});
+
+test('unverified transcript words never establish acoustic voice discrimination',async()=>{
+ for(const transcript of ['', 'Unverified opening words.']){
+  for(const summary of ['The viewer can tell the voices apart.','You can tell the voice apart from the background.','The two voices sound distinct.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment({transcript}),'Give visual edit tests',env),'provider-invalid-response',502));
+  for(const summary of ['Voices were not analyzed.','You can tell the two containers apart.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment({transcript}),'Give visual edit tests',env)).mode,'ai'));
+ }
+});
+
+test('comparative composition adjectives are distinct from quantified social views',async()=>{
+ for(const summary of ['Try the more complete product view from the sample.','Consider more varied views of the cup.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
+ for(const summary of ['This video has many sponsored views.','This post has more really great views.','The video has many organic views.','The post got many sponsored views.','The post received more sponsored views.','Many sponsored views are present.','The post earned more really great views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual edit tests',env),'provider-invalid-response',502));
+});
+
+test('proposed camera acquisition preserves comparative composition without authorizing statistics',async()=>{
+ for(const summary of ['Try getting more complete product views of the cup.','Consider getting more varied views of the grinder.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Give visual edit tests',env)).mode,'ai'));
+ for(const summary of ['Try getting 999999 complete product views of the cup.','Consider getting more sponsored views of the grinder.','Try getting more complete product views of the cup and this edit will double views.','The post received more varied views.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Give visual edit tests',env),'provider-invalid-response',502));
+});

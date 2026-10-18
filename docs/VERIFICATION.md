@@ -266,3 +266,8 @@ The optional public-player/vision workflow and its actual failures/corrections a
 ## Natural source-critique language and owned cleanup (1.13.1)
 
 445 Node tests pass. Actual final browser source review / 200-view follow-up returned HTTP 200 AI in 16.285/8.350s, one original provider reply each, with same-capture citations, reload/mobile and no corpus writes. Earlier cleanup/validation failures remain recorded in DEMO_VERIFICATION.md; controlled replay is labeled separately. The optional capture now drains a bounded three-second owned close including late launch, rejects thrown close, and aligns CLI exit and service quarantine. No source audio or continuous-pacing proof was added. Purposeful model comparisons still show factual errors; existing local vision model remains configured and full parity stays open.
+
+
+## Public-source opening speech (1.14.0)
+
+[Actual browser and failed-case evidence](DEMO_VERIFICATION.md#public-source-opening-speech-1140) now covers optional ordinary-player opening audio, one source-bound transcription before vision and same-transcript follow-ups. Final gpt-transcribe runs returned AI critique/follow-up in 45.677/14.799s and 45.334/8.836s, with source/time/hash receipts, reload/mobile checks and no corpus writes. Unreliable whisper and gpt-4o recognition on another source remain content failures despite successful HTTP responses. The final recognizer's no-language result supplies no alleged words. 475 Node tests pass; Python passed 17 with one optional skip. Partial audio and frame interpretation remain unverified; no manual-listening or representative accuracy claim is made. Full parity stays open.
