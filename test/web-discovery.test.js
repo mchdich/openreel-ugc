@@ -215,3 +215,17 @@ test('the discovery API persists only independently verified matching official r
   const response=await handleApi(post({query:'Find coffee creators at NYU with at least 1000 followers and email in bio'}),{...env,OPENREEL_CORPUS:index});assert.equal(response.status,200);const body=await response.json();assert.equal(body.provider,'web-assisted-public-profile-verification');assert.equal(body.incomplete,true);assert.equal(body.profilesFailed,1);assert.match(body.notice,/partial results/i);assert.equal(body.records.length,1);assert.equal(stored.length,1);assert.equal(stored[0].options.kind,'real');assert.equal(stored[0].options.verification,'provider-observed');assert.equal(stored[0].records[0].bio,'NYU\ncoffee\ncurrent@creator.example');assert.equal(stored[0].records[0].sourceType,'tiktok-creator-embed');
  });
 });
+
+test('compound creator topics combine explicit bio terms with recurrent post terms while preserving school/contact filters',async()=>{
+ const candidates=['splitbio','sporadic','wrongschool'].map(candidate);
+ await withFetch(async url=>{
+  if(String(url).endsWith('/responses'))return json(output(candidates));
+  const handle=new URL(url).pathname.split('@')[1],base={splitbio:41000,sporadic:42000,wrongschool:43000}[handle];
+  const response=profile(handle,{base,bio:`${handle==='wrongschool'?'UCLA':'NYU'}\nBuild strength with me\ncoach@creator.example`,caption:'Training session',count:4});
+  const html=await response.text();let seen=0;
+  return new Response(html.replace(/Training session/g,()=>++seen<=(handle==='sporadic'?1:2)?'Training session':'My daily meal'),{headers:{'content-type':'text/html'}});
+ },async()=>{
+  const result=await discover('Find strength training creators at NYU with at least 1,000 followers and email in bio',{},env);
+  assert.deepEqual(result.records.map(r=>r.handle),['@splitbio']);assert.ok(result.records.every(r=>r.bio.includes('Build strength')&&r.caption==='Training session'&&r.followers===1200&&r.email==='coach@creator.example'&&r.school==='New York University'));
+ });
+});

@@ -1,0 +1,11 @@
+# Combine supported topic terms across profile and recurring posts
+
+Continue the approved full demo scope inline. A new ordinary Live strength-training query verified three public profiles and six dated posts but returned no matches. Native inspection showed one profile explicitly offering to build strength and many selected post captions saying Training. The current filter requires all topic terms together in the identity or each recurrent post, so it rejects supported split evidence.
+
+Evaluate each topic term against the same actual creator profile selection: require that term in public handle/bio/niche, or in at least two distinct selected posts and at least half the selection. Every term must qualify. Then retain the existing final record search and exact school/location/follower/contact filters, deduplication and returned source facts. This changes evidence composition, not synonyms or inferred attributes. Incidental terms, repeated minorities and caption-only school/contact claims stay ineligible.
+
+Add meaningful adapter regression with split bio/recurring captions and negative incidental/school cases. Independently review; replay the actual collected profile selection through the pure filter separately from a new real browser query. Record all actual failures, partial results, dates and corpus acquisition deltas; do not call bounded topics representative coverage. Publish tested source and exact evidence after checks. Remaining full-parity requirements stay open.
+
+## Outcome
+
+An unchanged fresh official snapshot of 10 posts with 10 Training mentions and strength in the bio returns 0 baseline / 1 fixed. Actual normal browser returns 4 latte-art creators in 9.789s and 1 strength-training creator in 7.873s, with AI synthesis, recorded avatar states (three loaded immediately; all five in the separate CDN decode check), reload, mobile and no page errors. Two bounded flows added 12 actual inspected dated posts (154,474→154,486 real; 4,633→4,637 creator identities; 312→324 provider-observed). The earlier pre-fix acquisition/failure is preserved separately. All 495 Node tests pass, Python 17 pass / 1 optional skip, and independent review has no significant findings. Exact-commit core/cohort smoke and publication records follow outside source. The two topics are not representative coverage or audiovisual-emergence proof.
