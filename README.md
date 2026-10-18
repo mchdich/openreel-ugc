@@ -39,6 +39,8 @@ The portable Worker entry point is `dist/server/index.js`. Building does not pub
 
 **Specific visual patterns (1.8.0):** Trends → Corpus → **Detect visual patterns** proposes shared combinations of framing, objects and actions from a separate bounded description sample. Every retained member must match each accepted component; card wording and exact excerpts come from a composable 19-feature catalog. The detector uses up to two model calls sharing one 45-second deadline and never writes inferred formats into the corpus. Ordinary browsing/typing makes no detection call; same-query toggles reuse the in-memory result. This is attributed-description research, not direct footage inspection, open-ended visual recognition or evidence of current emergence. See [the actual browser verification](docs/DEMO_VERIFICATION.md).
 
+**Dated public-post imports (1.9.0):** opt in with `OPENREEL_POST_METADATA=true` to import an actual posting timestamp and available engagement counts from one ordinary canonical public TikTok page. The real browser import returned a matching public post in 0.85 seconds, loaded its cover/avatar and survived reload. Default configuration retains official oEmbed. No raw video, transcript or visual description is acquired; missing dates/counts stay unknown. This supplies dated records without establishing current trend coverage.
+
 ## Research flows
 
 - **Library:** research imported records or the labeled fictional examples. Creator filters combine topic, school/location, follower bounds, counts, public contacts, and email-in-bio requirements. Unknown metrics cannot satisfy numeric filters.

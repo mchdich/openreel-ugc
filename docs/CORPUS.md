@@ -127,6 +127,16 @@ With `OPENREEL_WEB_DISCOVERY=true` and a compatible server OpenAI key/model, Liv
 
 The first actual browser acquisition raised the local store to 154,428 records, 4,624 creator identities and 266 provider-observed records. This four-record/three-identity increase is distinct from later refreshes, which update observation timestamps without increasing coverage. The hosted store was not changed.
 
+## Optional dated public-post imports
+
+Set `OPENREEL_POST_METADATA=true` in server configuration to make the existing `POST /api/videos/import` and browser **Import URL** action inspect one ordinary canonical public post page instead of oEmbed. The default remains oEmbed. The request is fixed to the validated official HTTPS host/path, rejects redirects, has a 10-second deadline and 1 MiB HTML bound, and never retries or falls back automatically. No scripts execute, raw provider HTML reaches the client, or source video/subtitle URLs are fetched.
+
+The parser reads exactly one `__UNIVERSAL_DATA_FOR_REHYDRATION__` JSON script and requires statusCode0, the exact requested post ID, a valid public author identity and explicit public visibility. Private/friends-only/prohibited/taken-down/error/shell data rejects. The returned verified author may correct a stale pasted handle; the post ID must still match. This hydration shape is an observed undocumented metadata surface and may change.
+
+`createTime` Unix seconds supply a UTC `postedAt` only when valid and within the supported past-to-observation range (including a five-minute clock-skew allowance). Captions, video IDs and retrieval time never supply posting dates. Actual numeric counts retain genuine zeros; missing/negative/noninteger counts remain unavailable. Public author bio school/location fields use the existing conservative self-description rules. Nothing establishes current enrollment, residence, full post history or current emergence. New records retain `sourceType: tiktok-public-post`, their exact canonical source, retrieval timestamp and profile evidence. They use the ordinary corpus import path, which updates an existing same-ID record rather than adding a duplicate. This is a fresh whole-record snapshot, not the archival-preserving player-delta merge below.
+
+The actual local browser imported `7648984799574510861` with posting time `2026-06-08T11:28:30.000Z`, 1.1M views and available likes/comments/shares. An independent native read verified the persisted date/counts/source identity against the actual response. Corpus counts remained 154,428 real records / 4,624 identities / 266 provider-observed records. The cover/avatar loaded and browser reload preserved the library card and posting age; 390px mobile had no overflow. See [DEMO_VERIFICATION.md](DEMO_VERIFICATION.md).
+
 ## Optional public-player metadata collection
 
 The local collector can resolve imagery and a current handle for explicitly supplied known post IDs when TikTok exposes them in its ordinary public player. It does not search for posts. Put **1–5 unique numeric post ID strings** in a JSON array; use strings to preserve large IDs exactly. An explicit `--limit` permits up to 40 IDs in one sequential batch. Missing or unavailable sources remain unresolved.

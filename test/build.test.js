@@ -21,6 +21,12 @@ test('portable Worker serves the exact client and handles research without Node 
   assert.equal(dated.status,200);assert.equal((await dated.json()).temporal.windows.prior.start,'2024-07-08');
   assert.equal((await worker.fetch(new Request('https://example.test/missing'))).status,404);
   assert.equal((await worker.fetch(new Request('https://example.test/',{method:'POST'}))).status,405);
+  const original=globalThis.fetch;let postCalls=0;
+  try{
+    globalThis.fetch=async(url,init)=>{postCalls++;assert.equal(url,'https://www.tiktok.com/@public_fixture/video/123456');assert.equal(init.redirect,'error');return new Response('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({__DEFAULT_SCOPE__:{'webapp.video-detail':{statusCode:0,itemInfo:{itemStruct:{id:'123456',privateItem:false,createTime:'1780918110',author:{id:'999',uniqueId:'public_fixture',privateAccount:false},stats:{playCount:0}}}}}})+'</script>',{headers:{'content-type':'text/html'}});};
+    const imported=await worker.fetch(new Request('https://example.test/api/videos/import',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url:'https://www.tiktok.com/@public_fixture/video/123456'})}),{OPENREEL_POST_METADATA:'true'});
+    assert.equal(imported.status,200);const post=await imported.json();assert.equal(post.record.postedAt,'2026-06-08T11:28:30.000Z');assert.equal(post.record.views,0);assert.equal(post.record.sourceType,'tiktok-public-post');assert.equal(postCalls,1);
+  }finally{globalThis.fetch=original;}
 });
 
 test('portable Worker binds its hosted corpus through D1 without runtime schema changes',async()=>{

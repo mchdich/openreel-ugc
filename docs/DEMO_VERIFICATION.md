@@ -1,4 +1,4 @@
-# Local demo verification — 1.8.0
+# Local demo verification — 1.9.0
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text and vision use GPT-5.4 mini; transcription uses whisper-1. No provider responses were substituted in the browser acceptance runs.
 
@@ -12,6 +12,18 @@ The tested research, writing, creator-filter and upload paths work. **Full equiv
 4. Attach a video and ask: **Why did my video only get 200 views? Give me three concrete changes and a stronger opening.** The browser extracts up to eight sampled frames and available audio. The model can suggest edits; it cannot establish why a reported metric occurred. Actual upload and natural-footage results are recorded below.
 5. Choose Live search and ask: **Find coffee creators**. With optional web discovery enabled locally, the final actual flow returned @jameshoffmanncoffee, @morgandrinkscoffee and @ryantagcoffee in 7.1 seconds. Start another Live chat: **Find NYU creators with at least 1,500 followers and public emails**. It returned @lizzie.crane with 3,858 observed followers and a public-bio email in 6.2 seconds. Both discovery/chat endpoints returned HTTP 200, all four table avatars loaded and the latest result survived reload. Coverage is a bounded set of checked profiles, not all TikTok.
 6. Open **Trends → Corpus**. The verified default browse now displays seven recurring formats with real source previews. Open a card to inspect its records, provenance and dates. Click **Detect visual patterns** for specific shared component proposals; the verified actual runs are recorded below. These examples are archival, not emerging trends today.
+
+## Dated public-post metadata (1.9.0)
+
+An ordinary canonical public-page probe returned a valid `webapp.video-detail` record with the exact post ID, public visibility, a UTC creation timestamp and actual engagement counts. Creator embeds had omitted these fields. The new explicit server opt-in `OPENREEL_POST_METADATA=true` uses this one-page reader for the existing browser Import URL action; default oEmbed remains compatible. It never derives dates from video IDs, captions or retrieval time, downloads footage/subtitles, executes scripts, retries, or automatically substitutes oEmbed after failure.
+
+The actual browser imported `https://www.tiktok.com/@lizzie.crane/video/7648984799574510861` with HTTP 200 in **846 ms**. Its supplied creation timestamp converts to **2026-06-08T11:28:30.000Z**. The page reported 1,100,000 views, 258,700 likes, 149 comments, 132,200 shares and 3,858 followers; these are observed snapshots, not calculated growth. Both source cover and author avatar loaded. Reload retained the real library card and posting age; 390px mobile had no overflow and no page errors. Independent native read-only corpus checks matched source type, ID, creator identity, date and all five counts to the actual app response. Counts remained 154,428 real records / 4,624 identities / 266 provider-observed records, with zero example/synthetic/unverified rows.
+
+An initial QA assertion expected the Library view itself to survive reload; the app deliberately reopens its home view. The corrected check reopens Library and verifies the saved card. That test-script failure was retained separately; the successful import was not relabeled as a failed provider request. Similarly, a raw HTML keyword probe marked a bundled CAPTCHA reference; the actual page carried statusCode0 and a complete matching public item, with no challenge interaction or bypass.
+
+The reader requires exactly one hydration script, matching ID, public author and explicit public visibility. It rejects shells, malformed/oversized/error/private/friends-only/prohibited/taken-down data. The ordinary fixed-host GET has a 10-second deadline, 1 MiB body cap and redirect rejection. Invalid creation dates, dates beyond observation time plus a five-minute clock-skew allowance, and missing/invalid counts stay unknown; genuine zero counts remain measured. Returned author identity may correct an old pasted handle. Profile school/location remain conservative public-bio self-descriptions. This undocumented metadata surface can change. Whole-record imports can update an existing same-ID snapshot; they are separate from the archival-preserving player-delta merge.
+
+This establishes a real dated-import path. The sample is from June 2026; it does not close current October trend emergence, continuous-video understanding or unrestricted discovery. A separate final core browser run returned cooking-hook synthesis from 243 matching records in **4.621 seconds**, a source-preserving creative-brief follow-up in **5.067 seconds**, and two compound UCLA/follower/public-email matches in **1.526 seconds**. Its current-week trend query correctly returned zero dated comparison records.
 
 ## Specific visual-pattern detection (1.8.0)
 
@@ -89,7 +101,7 @@ The final speech-bearing upload repeat returned HTTP 200 for transcription, crit
 
 ## Final checks
 
-- Node: 366 tests passed, zero failures, including web discovery, relevance/compound filters, error boundaries, format coverage, selection provenance and generated Worker/D1 retrieval.
+- Node: 373 tests passed, zero failures, including web discovery, relevance/compound filters, error boundaries, format coverage, selection provenance and generated Worker/D1 retrieval.
 - Python: 17 passed, one optional test skipped.
 - Portable Worker build completed; publication of this revision to Sites was not requested.
 - The complete browser upload test returned HTTP 200 for transcription and both vision turns. Its first answer arrived about 20.2 seconds after file attachment started.
