@@ -165,9 +165,11 @@ function trendCards(){
   if(!mixed)return trendGroupCards(records,state.records.some(r=>r.demo)?'example':'recorded');
   return [['recorded','Recorded patterns',records.filter(r=>!r.demo)],['example','Fictional example patterns',records.filter(r=>r.demo)]].map(([kind,label,group])=>`<section class="pattern-group" data-pattern-kind="${kind}"><h2 class="pattern-group-heading">${label}</h2>${trendGroupCards(group,kind,true)}</section>`).join('');
 }
-function trendExampleRows(records){return `<div class="trend-example-list">${records.slice(0,5).map((r,i)=>{
+function trendExampleRows(records){
+  const examples=[...records].sort((a,b)=>Number(Boolean(url(b.thumbnail)))-Number(Boolean(url(a.thumbnail))));
+  return `<div class="trend-example-list">${examples.slice(0,5).map((r,i)=>{
   const fromDescription=!(r.hook||r.caption||r.format)&&r.visualDescription;
-  return `<button class="trend-example" data-record="${escape(r.id)}"><span class="trend-example-thumbs">${[r,records[(i+1)%records.length]].map(v=>url(v.thumbnail)?`<img src="${escape(url(v.thumbnail))}" alt="">`:'<i></i>').join('')}</span><span><h3>${escape((r.hook||r.caption||r.format||r.visualDescription||'Video example').slice(0,80))}</h3><p>${fromDescription?`<span class="trend-example-source">${escape(descriptionLabel(r))} · </span>`:''}${escape(displayHandle(r.handle,r.creatorId))}</p></span><span class="trend-example-metric">${metric(r,'views')}<small>${escape(relativeDate(r))}</small></span></button>`;
+  return `<button class="trend-example" data-record="${escape(r.id)}"><span class="trend-example-thumbs">${[r,examples[(i+1)%examples.length]].map(v=>url(v.thumbnail)?`<img src="${escape(url(v.thumbnail))}" alt="">`:'<i></i>').join('')}</span><span><h3>${escape((r.hook||r.caption||r.format||r.visualDescription||'Video example').slice(0,80))}</h3><p>${fromDescription?`<span class="trend-example-source">${escape(descriptionLabel(r))} · </span>`:''}${escape(displayHandle(r.handle,r.creatorId))}</p></span><span class="trend-example-metric">${metric(r,'views')}<small>${escape(relativeDate(r))}</small></span></button>`;
 }).join('')}</div>`;}
 function trendContext(trend){
   const evidence=Array.isArray(trend.evidence)?trend.evidence:[],groups=Array.isArray(trend.sourceGroups)?trend.sourceGroups:[],dates=trend.dateWindow;

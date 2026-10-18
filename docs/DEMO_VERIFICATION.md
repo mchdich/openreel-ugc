@@ -5,6 +5,10 @@ Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3
 The tested research, writing, creator-filter and upload paths work. **Full equivalence to the original advert is not established.** Web-assisted candidates can now reach outside the seed index, with independently checked official profile facts. Unrestricted discovery, representative coverage and current emerging-trend evidence remain open. The separately hosted site still runs 1.5.0 and has no provider key; these results concern the local app.
 
 
+## Available trend previews (1.16.1)
+
+The first compact example row previously displayed two placeholders despite preview-bearing members elsewhere in the same group. The example list now prefers those existing records, preserving each record’s own identity, metrics and source link. An actual browser assertion failed with zero images before the change; after it, both 58×58 images load in the first 530×121 row with 19px text. All seven real cards remain, with 20 loaded fan covers and no mobile overflow or page errors. Group counts and evidence are unchanged. Independent review found no actionable issue; the full 504-test suite passes.
+
 ## Baseline-preserving source samples (1.16.0)
 
 The local app retains all eight original temporal frames and adds up to four separated measured visual states. A direct actual browser test returned 12frames for each of two independent public sources. Latte-art review/follow-up: 57.717/21.104 seconds; home-coffee tour: 57.556/21.472 seconds. All four replies returned HTTP 200 and AI mode. Follow-ups reused the same capture/audio metadata; receipts and citations survived reload, raw samples/session tokens were not persisted, mobile had no overflow and review left the corpus unchanged. All 24 returned receipt hashes exactly match images directly inspected by the agent. Source audio was sampled, but no words were recognized for these two cases; independent acoustic verification is not claimed.

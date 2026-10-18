@@ -22,3 +22,8 @@ Review focus: loss of baseline times; selected clustered duplicates; byte overfl
 Independent review found one P2: an exact12-second clip deduplicates the6-second baseline and could gain five extras. A new regression failed before bounding additions relative to baseline length; all504Node tests then passed. The real generated-upload script now explicitly checks that every baseline time survives, alongside the intermediate reveal and cancellation.
 
 Actual ordinary source browser capture used twelve frames for the latte-art clip. Every digest exactly matches an independently inspected image from the private prototype; all original eight samples remain. Both real answers now recognize espresso extraction, whereas the earlier eight-frame answer recommended recording an extraction bridge that already exists. Some prose still generalizes sampled gaps/pacing; extra samples are not continuous interpretation or a factual-correctness guarantee. The second source and final publication outcome are recorded externally.
+
+
+## Visible example follow-through (1.16.1)
+
+The actual reference-state audit found the first compact trend row had zero images although the group contained records with usable preview URLs. A new actual-browser assertion failed with 0 rather than 2 images. Prefer preview-bearing records only for the bounded example list, retaining their original order within each availability class and leaving source records, group counts, metrics and evidence unchanged. Pair adjacent examples from that same ordered list. The browser rechecks actual loaded 58×58 images, row 530×121 geometry, 19px text, source links and mobile overflow. This does not fabricate media where none is supplied.
