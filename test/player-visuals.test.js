@@ -92,3 +92,13 @@ test('a challenge during pending opening audio stops capture before frame reads 
  const started=performance.now();await assert.rejects(call('capturePublicPlayer',chromium,source(0),{audioSeconds:1,timeoutMs:2000}),error=>error.code==='PLAYER_BARRIER');
  assert.ok(performance.now()-started<1500,'Access monitoring must stop while audio is pending');assert.equal(readsDuringAudio,1);assert.equal(frameReads,0);assert.equal(closed,1);
 });
+
+test('optional low-resolution source scan retains baseline frames and rechecks a late challenge before JPEG release',async()=>{
+ for(const blocked of [false,true]){
+  let scanReads=0,jpegReads=0,closed=0;
+  const page={setDefaultTimeout(){},on(){},url:()=>`https://www.tiktok.com/player/v1/1000?autoplay=1&muted=1`,goto:async()=>({status:()=>200}),waitForFunction:async()=>{},evaluate:async()=>({links:[{href:url(0)},{href:'https://www.tiktok.com/@visual_0'}],images:[],visibleChallenge:blocked&&scanReads>0}),locator:()=>({evaluate:async(_fn,arg)=>arg===undefined?{duration:10,width:720,height:1280}:arg?.kind==='visual-descriptor'?(scanReads++,{timestamp:arg.timestamp,descriptor:arg.timestamp>4&&arg.timestamp<5?[0,1,0]:[0,0,1]}):(jpegReads++,{timestamp:arg,dataUrl:'data:image/jpeg;base64,/9j/2Q=='})})};
+  const chromium={launch:async()=>({newContext:async()=>({newPage:async()=>page,newCDPSession:async()=>({send:async()=>{},on(){}})}),close:async()=>{closed++;}})};
+  if(blocked){await assert.rejects(call('capturePublicPlayer',chromium,source(0),{scanStates:true}),e=>e.code==='PLAYER_BARRIER');assert.equal(jpegReads,0);assert.equal(scanReads,1);}else{const result=await call('capturePublicPlayer',chromium,source(0),{scanStates:true});const times=result.attachment.frames.map(f=>f.timestamp);for(const t of [.04,.65,1.5,3,5,6,7.5,9.96])assert.ok(times.includes(t));assert.ok(times.some(t=>t>4&&t<5));assert.equal(times.length,9);assert.ok(scanReads<=128);assert.equal(result.snapshot.scanCount,scanReads);assert.equal(result.visualEvidence.frames.length,9);assert.doesNotMatch(JSON.stringify(result.visualEvidence),/descriptor|data:image/);}
+  assert.equal(closed,1);
+ }
+});

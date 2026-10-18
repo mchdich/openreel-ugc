@@ -122,3 +122,11 @@ test('generated Worker grows dated coverage across creator-deduplicated searches
   assert.deepEqual(checked.slice(6,8),['22002','22001']);assert.equal(checked.length,12);
  }finally{globalThis.fetch=original;db.close();}
 });
+
+test('portable Worker handles twelve selected frames with the shared bound and exact citations',async()=>{
+ execFileSync(process.execPath,['scripts/build.js'],{cwd:fileURLToPath(new URL('../',import.meta.url)),stdio:'pipe'});
+ const {default:worker}=await import(new URL('../dist/server/index.js',import.meta.url)),original=globalThis.fetch,times=Array.from({length:12},(_,i)=>i),frames=times.map(timestamp=>({timestamp,dataUrl:'data:image/jpeg;base64,/9j/2Q=='}));
+ try{globalThis.fetch=async()=>new Response(JSON.stringify({choices:[{finish_reason:'stop',message:{role:'assistant',refusal:null,content:JSON.stringify({title:'Selected samples',summary:'The supplied stills show the setup.',sections:[{heading:'Visible states',text:'The product is present in the selected samples.',timestamps:times}]})}}]}),{headers:{'content-type':'application/json',authorization:'Bearer controlled-public-token'}});
+ const response=await worker.fetch(new Request('https://example.test/api/video/analyze',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer controlled-public-token'},body:JSON.stringify({question:'Review visual states',records:[],attachment:{name:'twelve.mp4',duration:12,width:720,height:1280,frames}})}),{OPENAI_API_KEY:'controlled-key',OPENAI_VISION_MODEL:'controlled-vision',OPENREEL_API_TOKEN:'controlled-public-token'});assert.equal(response.status,200);const result=await response.json();assert.equal(result.mode,'ai');assert.equal(result.videoAnalysis.frameCount,12);assert.deepEqual(result.sections[0].timestamps,times);
+ }finally{globalThis.fetch=original;}
+});

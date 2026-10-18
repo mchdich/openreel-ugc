@@ -1,5 +1,6 @@
 /** Shared, dependency-free corpus research. All text is plain data for safe rendering. */
 export const MAX_RECORDS = 2000;
+export const MAX_VIDEO_FRAMES = 12;
 const TEXT_FIELDS = ['id', 'handle', 'creatorId', 'caption', 'transcript', 'visualDescription', 'descriptionSource', 'hook', 'format', 'niche', 'location', 'school', 'postedAt', 'url', 'thumbnail', 'email', 'bio', 'authorUrl', 'avatar', 'sourceType', 'fetchedAt'];
 const METRIC_FIELDS = ['followers', 'views', 'likes', 'comments', 'shares'];
 const NUM = '(\\d[\\d,]*(?:\\.\\d+)?\\s*[kmb]?)';
@@ -92,7 +93,7 @@ export function normalizeCapturedFrames(value,record){
   const shape=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
   if(!shape(value,['sourceType','sourceUrl','creatorId','observedAt','duration','frames'])||value.sourceType!=='tiktok-public-player-frames'||record.demo!==false)throw bad();
   validateCaptureIdentity(value,record,bad);
-  if(!Number.isFinite(value.duration)||value.duration<=0||value.duration>600||!Array.isArray(value.frames)||value.frames.length<1||value.frames.length>8)throw bad();
+  if(!Number.isFinite(value.duration)||value.duration<=0||value.duration>600||!Array.isArray(value.frames)||value.frames.length<1||value.frames.length>MAX_VIDEO_FRAMES)throw bad();
   let prior=-1;const frames=value.frames.map(frame=>{if(!shape(frame,['timestamp','sha256'])||!Number.isFinite(frame.timestamp)||frame.timestamp<0||frame.timestamp>value.duration||frame.timestamp<=prior||typeof frame.sha256!=='string'||!/^[a-f0-9]{64}$/.test(frame.sha256))throw bad();prior=frame.timestamp;return {timestamp:frame.timestamp,sha256:frame.sha256};});
   return {sourceType:value.sourceType,sourceUrl:value.sourceUrl,creatorId:value.creatorId,observedAt:value.observedAt,duration:value.duration,frames};
 }

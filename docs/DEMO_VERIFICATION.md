@@ -4,6 +4,15 @@ Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3
 
 The tested research, writing, creator-filter and upload paths work. **Full equivalence to the original advert is not established.** Web-assisted candidates can now reach outside the seed index, with independently checked official profile facts. Unrestricted discovery, representative coverage and current emerging-trend evidence remain open. The separately hosted site still runs 1.5.0 and has no provider key; these results concern the local app.
 
+
+## Baseline-preserving source samples (1.16.0)
+
+The local app retains all eight original temporal frames and adds up to four separated measured visual states. A direct actual browser test returned 12frames for each of two independent public sources. Latte-art review/follow-up: 57.717/21.104 seconds; home-coffee tour: 57.556/21.472 seconds. All four replies returned HTTP 200 and AI mode. Follow-ups reused the same capture/audio metadata; receipts and citations survived reload, raw samples/session tokens were not persisted, mobile had no overflow and review left the corpus unchanged. All 24 returned receipt hashes exactly match images directly inspected by the agent. Source audio was sampled, but no words were recognized for these two cases; independent acoustic verification is not claimed.
+
+The previous eight-frame latte-art answer proposed recording an extraction bridge that exists between its samples. Both twelve-frame answers now recognize the actual extraction. This is a measured coverage improvement, not perfect interpretation: some prose still generalizes sampled gaps or reveal timing. Earlier private structured outputs confused a brew paddle with a portafilter, and higher-reasoning prototypes exhausted their response budgets. Those prototypes were not promoted.
+
+The optional `OPENREEL_SOURCE_SCAN=true` flag uses the existing 60-second capture maximum to accommodate≤30 seconds of opening audio and≤128 tiny descriptor samples. Default source collection remains fixed-eight. The 50 MiB observed-network / 1280 KiB aggregate JPEG / 240-second review bounds remain intact. The generated upload regression captures a brief intermediate reveal, retains every baseline sample and tests cancellation without AI calls. 504 Node tests pass; 17 Python pass with one optional skip. Independent review found a deduplicated-baseline edge that allowed five additions; the regression failed before the +4-relative cap fixed it. Full parity, current audiovisual emergence and representative coverage remain open.
+
 ## Repeat the demo
 
 1. Start a new chat with Corpus selected. Ask: **Analyze cooking hooks across creators. Cite five source videos and suggest three openings for a 20-second recipe video.** The tested answer returned AI synthesis from 243 matching videos, cited distinct creators, and proposed three original openings in 6.4 seconds.

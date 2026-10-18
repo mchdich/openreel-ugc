@@ -23,7 +23,7 @@ const temporalQuery=await moduleBundle('public/temporal-query.js','temporalQuery
 const visualFacts=await moduleBundle('public/visual-facts.js','visualFactModule','const {hasVisualDescriptionEvidence}=engineModule;');
 const visualCore=await moduleBundle('public/visual-patterns.js','visualPatternCore','const {creatorKey,summarizePatternGroup,hasVisualDescriptionEvidence}=engineModule;const {visualFeatures,visualFeatureEvidence}=visualFactModule;');
 const provider=await moduleBundle('lib/provider.js','providerModule');
-const media=await moduleBundle('lib/media.js','mediaModule','const {completionOptions}=providerModule;');
+const media=await moduleBundle('lib/media.js','mediaModule','const {completionOptions}=providerModule;const {MAX_VIDEO_FRAMES}=engineModule;');
 const social=await moduleBundle('lib/social.js','socialModule');
 const postMetadata=await moduleBundle('lib/live-post-metadata.js','postMetadataModule','const {canonicalTikTokUrl,ingestPublicPost}=socialModule;const {creatorKey,retainPostingDate,retainVisualEvidence}=engineModule;');
 const audio=await moduleBundle('lib/audio.js','audioModule');

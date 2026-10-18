@@ -65,3 +65,12 @@ test('source cancellation drains normal browser cleanup and quarantines a failed
  const started=Date.now();await assert.rejects(service({url,question:'Review'}),e=>e.status===504);assert.ok(Date.now()-started>=1750);assert.equal(calls.analyze,0);assert.equal((await service({url,question:'Another explicit source'})).mode,'ai');
  const failed=setup({capture:async()=>{throw Object.assign(Error('Controlled cleanup failure'),{code:'CAPTURE_CLEANUP_FAILED',captureDiagnostic:{cleanupFailed:true}});}});await assert.rejects(failed.service({url,question:'Review'}),e=>e.code==='CAPTURE_CLEANUP_FAILED');await assert.rejects(failed.service({url,question:'Another source'}),e=>e.status===503);assert.equal(failed.calls.analyze,0);
 });
+
+test('optional source scanning retains twelve exact frame receipts and citations through workspace reload',async()=>{
+ const frames=Array.from({length:12},(_,i)=>({timestamp:i*.5,dataUrl:attachment.frames[0].dataUrl})),times=frames.map(f=>f.timestamp),evidence={...receipt,frames:frames.map(f=>({timestamp:f.timestamp,sha256:receipt.frames[0].sha256}))};
+ let controls;const service=mod.createSourceVideoService({...env,OPENREEL_SOURCE_SCAN:'true'},{inspect:async()=>({record}),capture:async(_source,options)=>{controls=options;return {attachment:{...attachment,frames},visualEvidence:evidence};},analyze:async input=>({...structuredClone(narrative),sections:[{heading:'Selected states',text:'Visible states.',timestamps:times}]})});
+ const answer=await service({url,question:'Review'});assert.equal(controls.scanStates,true);assert.equal(controls.timeoutMs,60000);assert.equal(answer.videoAnalysis.frameCount,12);assert.deepEqual(answer.videoAnalysis.sourceEvidence,evidence);
+ const restored=normalizeWorkspace({records:[record],conversations:[{id:'twelve',title:'Twelve',messages:[{role:'assistant',result:answer}]}]});
+ const saved=restored.conversations[0].messages[0].result;assert.equal(saved.videoAnalysis.frameCount,12);assert.deepEqual(saved.videoAnalysis.sourceEvidence,evidence);assert.deepEqual(saved.sections[0].timestamps,times);assert.doesNotMatch(JSON.stringify(saved),/data:image|sourceSessionId/);
+ let worked=false;const invalid=mod.createSourceVideoService({...env,OPENREEL_SOURCE_SCAN:'yes'},{inspect:async()=>{worked=true;},capture:async()=>assert.fail('No scan on invalid option')});await assert.rejects(invalid({url,question:'Review'}),e=>e.code==='SOURCE_SCAN_CONFIGURATION');assert.equal(worked,false);
+});

@@ -503,3 +503,12 @@ test('unverified spoken opening words are a bounded recognition limitation',asyn
  for(const summary of ['No audio or transcript is provided, so no spoken opening words can be verified.','No audio or transcript was supplied, so no spoken opening words can be recognized from the evidence.'])await withProvider(respond(narrative({summary})),async env=>assert.equal((await analyzeVideo(attachment(),'Review the recognized opening words if provided',env)).mode,'ai'));
  for(const summary of ['No spoken opening words can be verified, but the narrator speaks quickly.','No spoken opening words can be recognized because the music is loud.','No spoken opening words can be verified and the person tells the recipe.','The spoken opening words are clear.','No spoken opening words occur in this video.'])await withProvider(respond(narrative({summary})),env=>rejectsCode(()=>analyzeVideo(attachment(),'Review the recognized opening words if provided',env),'provider-invalid-response',502));
 });
+
+
+test('twelve selected frames fit the unchanged total JPEG budget and exact citation validation',async()=>{
+ const frames=Array.from({length:12},(_,timestamp)=>({timestamp,dataUrl:jpeg(106*1024)})),video=attachment({frames});
+ assert.equal(validateVideoAttachment(video).frames.length,12);
+ await withProvider(respond(narrative({sections:[{heading:'Visible sequence',text:'The selected images depict the product setup.',timestamps:Array.from({length:12},(_,i)=>i)}]})),async env=>assert.deepEqual((await analyzeVideo(video,'Review all selected states',env)).sections[0].timestamps,[0,1,2,3,4,5,6,7,8,9,10,11]));
+ assert.throws(()=>validateVideoAttachment(attachment({frames:Array.from({length:13},(_,timestamp)=>({timestamp:timestamp*.5,dataUrl:jpeg()}))})),e=>e.code==='invalid-video'&&e.status===400);
+ assert.throws(()=>validateVideoAttachment(attachment({frames:Array.from({length:12},(_,timestamp)=>({timestamp,dataUrl:jpeg(160*1024)}))})),e=>e.code==='invalid-video'&&e.status===413);
+});

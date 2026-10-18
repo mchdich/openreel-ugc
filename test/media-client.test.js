@@ -14,11 +14,11 @@ test('invalid or overlong media is rejected before decoding',()=>{
   for(const d of [0,-1,NaN,Infinity,601])assert.throws(()=>sampleTimes(d));
 });
 
-test('a brief distinct reveal between fixed sample times is included in eight selected frames',()=>{
+test('a brief distinct reveal is added alongside the eight baseline frames',()=>{
  const samples=Array.from({length:25},(_,i)=>({timestamp:i*.5,descriptor:i===8||i===9?[0,1,0]:[0,0,1]}));
  const selected=selectFrameTimes(12.1,samples);
  assert.ok(selected.some(t=>t>=4&&t<5));
- assert.equal(selected.length,8);assert.equal(new Set(selected).size,8);
+ assert.equal(selected.length,9);assert.equal(new Set(selected).size,9);
  assert.ok(selected.filter(t=>t<=3).length>=4);assert.ok(selected.at(-1)>12);
  assert.deepEqual(selected,[...selected].sort((a,b)=>a-b));
 });
@@ -39,4 +39,21 @@ test('static and tiny clips retain valid bounded opening and closing coverage',(
 });
 test('invalid visual descriptors and unbounded analysis inputs fail before selection',()=>{
  for(const samples of [null,{},Array.from({length:129},(_,timestamp)=>({timestamp,descriptor:[0,0,0]})),[{timestamp:-1,descriptor:[0,0,0]}],[{timestamp:0,descriptor:[NaN,0,0]}],[{timestamp:0,descriptor:[2,0,0]}],[{timestamp:0,descriptor:[0,0,0]},{timestamp:0,descriptor:[1,1,1]}],[{timestamp:0,descriptor:[0,0,0]},{timestamp:1,descriptor:[1,1,1,1]}]])assert.throws(()=>selectFrameTimes(30,samples));
+});
+
+
+test('novel-state selection preserves every baseline frame and adds a separated intermediate reveal',()=>{
+ const samples=Array.from({length:25},(_,i)=>({timestamp:i*.5,descriptor:i===8||i===9?[0,1,0]:[0,0,1]}));
+ const selected=selectFrameTimes(12.1,samples);
+ for(const t of sampleTimes(12.1))assert.ok(selected.includes(t),'Lost baseline '+t);
+ assert.ok(selected.some(t=>t>=4&&t<5));assert.equal(selected.length,9);
+ const many=Array.from({length:121},(_,i)=>({timestamp:i*.25,descriptor:[i%5/4,i%7/6,i%9/8]})),more=selectFrameTimes(30.1,many);
+ assert.ok(more.length<=12);for(const t of sampleTimes(30.1))assert.ok(more.includes(t));
+ const extras=more.filter(t=>!sampleTimes(30.1).includes(t));
+ for(const t of extras)assert.ok(more.filter(other=>other!==t).every(other=>Math.abs(other-t)>=.7525));
+});
+
+test('deduplicated baseline times still add at most four measured states',()=>{
+ const samples=Array.from({length:25},(_,i)=>({timestamp:11.96*i/24,descriptor:[i%5/4,i%7/6,i%9/8]}));
+ const baseline=sampleTimes(12),selected=selectFrameTimes(12,samples);assert.equal(baseline.length,7);assert.ok(selected.filter(t=>!baseline.includes(t)).length<=4);for(const t of baseline)assert.ok(selected.includes(t));
 });

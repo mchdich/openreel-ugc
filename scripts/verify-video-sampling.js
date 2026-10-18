@@ -43,7 +43,8 @@ try{
     }finally{clearInterval(timer);if(recorder?.state==='recording')recorder.stop();stream.getTracks().forEach(track=>track.stop());}
   });
   assert.ok(proof.frames.some(frame=>frame.reveal),'The brief visual reveal must appear in the selected JPEGs.');
-  assert.ok(proof.frames.length<=8);assert.ok(proof.progress.length<=136);assert.equal(proof.cancelled,true);
+  for(const timestamp of proof.fixedTimes)assert.ok(proof.frames.some(frame=>frame.timestamp===timestamp),`Baseline sample ${timestamp} must survive.`);
+  assert.ok(proof.frames.length<=12);assert.ok(proof.progress.length<=140);assert.equal(proof.cancelled,true);
   assert.equal(proof.progress.at(-1).done,proof.progress.at(-1).total);
   const directory=resolve(values.out||'data/video-sampling-proof');await mkdir(directory,{recursive:true});
   await writeFile(resolve(directory,'browser-proof.json'),JSON.stringify(proof,null,2)+'\n');

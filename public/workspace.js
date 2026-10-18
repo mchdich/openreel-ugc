@@ -1,4 +1,4 @@
-import {normalizeRecords,MAX_RECORDS,retainPostingDate,retainVisualEvidence,normalizeCapturedFrames,normalizeSourceAudio} from './engine.js';
+import {normalizeRecords,MAX_RECORDS,MAX_VIDEO_FRAMES,retainPostingDate,retainVisualEvidence,normalizeCapturedFrames,normalizeSourceAudio} from './engine.js';
 
 /** Validate before replacing state; a full browser library never evicts real records. */
 export function mergeLibrary(records,incoming,{dropExamples=false}={}){
@@ -33,7 +33,7 @@ function conversation(value){
         sections:r.sections.map(s=>({heading:text(s.heading,200),text:text(s.text,5000),...(Array.isArray(s.sourceIds)?{sourceIds:[...new Set(s.sourceIds.filter(id=>sourceIds.has(id)))].slice(0,2000)}:{}),...(s.rationale?{rationale:{text:text(s.rationale.text,2000),...(s.rationale.label?{label:text(s.rationale.label,80)}:{})}}:{})})),sources,creators:recordList(r.creators)};
       if(typeof r.notice==='string')result.notice=text(r.notice);
       const video=videoMetadata(r.videoAnalysis);
-      if(video&&Number.isInteger(r.videoAnalysis.frameCount)&&r.videoAnalysis.frameCount>=1&&r.videoAnalysis.frameCount<=8&&Array.isArray(r.videoAnalysis.timestamps)&&r.videoAnalysis.timestamps.length===r.videoAnalysis.frameCount&&r.videoAnalysis.timestamps.every(t=>Number.isFinite(t)&&t>=0&&t<=video.duration))result.videoAnalysis={...video,frameCount:r.videoAnalysis.frameCount,timestamps:[...r.videoAnalysis.timestamps],audioAvailable:r.videoAnalysis.audioAvailable===true,transcriptProvided:r.videoAnalysis.transcriptProvided===true};
+      if(video&&Number.isInteger(r.videoAnalysis.frameCount)&&r.videoAnalysis.frameCount>=1&&r.videoAnalysis.frameCount<=MAX_VIDEO_FRAMES&&Array.isArray(r.videoAnalysis.timestamps)&&r.videoAnalysis.timestamps.length===r.videoAnalysis.frameCount&&r.videoAnalysis.timestamps.every(t=>Number.isFinite(t)&&t>=0&&t<=video.duration))result.videoAnalysis={...video,frameCount:r.videoAnalysis.frameCount,timestamps:[...r.videoAnalysis.timestamps],audioAvailable:r.videoAnalysis.audioAvailable===true,transcriptProvided:r.videoAnalysis.transcriptProvided===true};
       if(result.videoAnalysis){
         if(r.videoAnalysis.sourceEvidence!==undefined){
           const evidence=r.videoAnalysis.sourceEvidence,target=sources.find(record=>record.url===evidence?.sourceUrl);if(!target)throw new Error('Invalid saved source capture.');result.videoAnalysis.sourceEvidence=normalizeCapturedFrames(evidence,target);
@@ -41,7 +41,7 @@ function conversation(value){
           if(r.videoAnalysis.sourceAudio!==undefined){const audio=normalizeSourceAudio(r.videoAnalysis.sourceAudio,target,evidence.duration);if(audio.status==='available'){if(audio.capture.sourceUrl!==evidence.sourceUrl||audio.capture.creatorId!==evidence.creatorId||Date.parse(audio.capture.observedAt)>Date.parse(evidence.observedAt)+1000)throw new Error('Saved speech conflicts with its frame source.');transcript=Boolean(audio.transcript);}result.videoAnalysis.sourceAudio=audio;}
           if(result.videoAnalysis.duration!==evidence.duration||result.videoAnalysis.frameCount!==evidence.frames.length||JSON.stringify(result.videoAnalysis.timestamps)!==JSON.stringify(evidence.frames.map(f=>f.timestamp))||result.videoAnalysis.audioAvailable||result.videoAnalysis.transcriptProvided!==transcript)throw new Error('Saved source analysis conflicts with its capture.');
         }
-        for(const [i,section]of r.sections.entries())if(section.timestamps!==undefined){if(!Array.isArray(section.timestamps)||section.timestamps.length<1||section.timestamps.length>8||section.timestamps.some(t=>!result.videoAnalysis.timestamps.includes(t)))throw new Error('Invalid saved visual timestamps.');result.sections[i].timestamps=[...new Set(section.timestamps)];}
+        for(const [i,section]of r.sections.entries())if(section.timestamps!==undefined){if(!Array.isArray(section.timestamps)||section.timestamps.length<1||section.timestamps.length>MAX_VIDEO_FRAMES||section.timestamps.some(t=>!result.videoAnalysis.timestamps.includes(t)))throw new Error('Invalid saved visual timestamps.');result.sections[i].timestamps=[...new Set(section.timestamps)];}
       }
       const researchSource=explicitSource||(m.researchSource===undefined?(result.videoAnalysis?'video':Number.isSafeInteger(r.corpus?.byKind?.real)&&r.corpus.byKind.real>=0?'corpus':undefined):undefined);
       return {role:'assistant',result,...(researchSource?{researchSource}:{})};
