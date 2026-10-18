@@ -12,6 +12,8 @@ The starter library is fictional. Free creator collection and deterministic libr
 
 **Baseline-preserving samples (1.16.0):** uploads retain every original temporal sample and add up to four measured visual states. Optional local public-source scanning uses the same selection, with exact source receipts and twelve-frame citations/reload. Two actual public-video reviews and their three-edit/three-opening-line follow-ups pass; all 24 JPEG hashes match directly inspected images. The coffee answer now recognizes extraction it previously missed.504 Node tests pass. Some prose still overstates sampled gaps; this is not continuous video interpretation. [Measured evidence](docs/DEMO_VERIFICATION.md#baseline-preserving-source-samples-1160).
 
+**Current evidence and source errors (1.16.2):** named-clip questions no longer turn evidence instructions into search constraints; inline creator filters remain enforced. A post without playable geometry returns a clear source limitation before capture/model work. Four reviewed source annotations expand local visual coverage; an actual twelve-frame review/follow-up and reload/mobile checks pass, but a separate repeat failed validation and object errors remain.507 Node tests pass. [Actual results and failures](docs/DEMO_VERIFICATION.md#current-source-evidence-and-retrieval-boundaries-1162).
+
 ## Run locally
 
 Use **Node.js 24 or newer**. There are zero runtime package dependencies; optional corpus storage uses Node’s built-in SQLite.

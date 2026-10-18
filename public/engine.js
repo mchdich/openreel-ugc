@@ -376,7 +376,10 @@ function statistics(all, matches) {
 // Output directions belong to synthesis, not the AND-based source search.
 function retrievalText(question){
   if(/\b(?:script|transcript)[^:\n]{0,100}:/i.test(question))return String(question);
-  return String(question).replace(/^(?:write|draft|suggest|generate|propose|give me)\s+(?:(?:\d+|one|two|three|four|five|some|new|alternative)\s+)*(?:hooks?|openings?|opening lines?|briefs?|scripts?)\s+(?:for|about)\s+/i,'').replace(/(?:[.!?;]\s*|,?\s+and\s+)(?:cite|suggest|write|draft|propose|generate|(?:give me|include)\s+(?:(?:\d+|one|two|three|four|five|some|the)\s+)?(?:hooks?|openings?|examples?|citations?|source videos?|shot lists?)|turn (?:this|these|it) into)\b[\s\S]*$/i,'').trim();
+  // A named-clip evidence question supplies a topic, not a location or extra search words.
+  const focus=String(question).replace(/^(?:in|for)\s+(?:the\s+)?([^!?;\n]{1,200}?)\s+(?:clip|video)\s*,?\s*what\s+(?:(?:do|does)\s+(?:the\s+)?(?:sampled\s+)?(?:frames?|images?|clip|video)\s+(?:actually\s+)?show|is\s+(?:actually\s+)?visible)\s*\?/i,'$1.');
+  const evidence=focus.replace(/(?:^|[.!?;]\s*)distinguish\s+(?:visible|observed|shown)\s+(?:objects|actions|details|facts|evidence)\s+from\s+(?:any\s+action\s+that\s+is\s+not\s+established|(?:inferred|unverified|unsupported)\s+(?:actions?|details|claims|assumptions))\b/gi,'.');
+  return evidence.replace(/^(?:write|draft|suggest|generate|propose|give me)\s+(?:(?:\d+|one|two|three|four|five|some|new|alternative)\s+)*(?:hooks?|openings?|opening lines?|briefs?|scripts?)\s+(?:for|about)\s+/i,'').replace(/(?:[.!?;]\s*|,?\s+and\s+)(?:cite|suggest|write|draft|propose|generate|(?:give me|include)\s+(?:(?:\d+|one|two|three|four|five|some|the)\s+)?(?:hooks?|openings?|examples?|citations?|source videos?|shot lists?)|turn (?:this|these|it) into)\b[\s\S]*$/i,'').trim();
 }
 export const wantsWriting=message=>/^(?:turn (?:this|these|it) into|make (?:this|these|it|a brief)|(?:write|draft|suggest|give me|generate|propose)\s+(?:(?:\d+|one|two|three|four|five|some|alternative|new|more|a|an)\s+)*(?:hooks?|openings?|opening lines?|scripts?|briefs?|shot lists?))\b/i.test(message);
 const writingFollowup=message=>wantsWriting(message)&&!/\b(?:for|about)\s+(?!(?:this|that|these|those|it|them|the above)\b)[a-z]/i.test(message);

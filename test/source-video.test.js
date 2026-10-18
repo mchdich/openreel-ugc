@@ -74,3 +74,11 @@ test('optional source scanning retains twelve exact frame receipts and citations
  const saved=restored.conversations[0].messages[0].result;assert.equal(saved.videoAnalysis.frameCount,12);assert.deepEqual(saved.videoAnalysis.sourceEvidence,evidence);assert.deepEqual(saved.sections[0].timestamps,times);assert.doesNotMatch(JSON.stringify(saved),/data:image|sourceSessionId/);
  let worked=false;const invalid=mod.createSourceVideoService({...env,OPENREEL_SOURCE_SCAN:'yes'},{inspect:async()=>{worked=true;},capture:async()=>assert.fail('No scan on invalid option')});await assert.rejects(invalid({url,question:'Review'}),e=>e.code==='SOURCE_SCAN_CONFIGURATION');assert.equal(worked,false);
 });
+
+test('a public post without playable video geometry returns a source limit before browser or model work',async()=>{
+ let inspected=0,captured=0;const {service}=setup({inspect:async()=>({record,video:++inspected===1?null:{duration:10,width:720,height:1280}}),capture:async()=>{captured++;return {attachment,visualEvidence:receipt};}});
+ await assert.rejects(service({url,question:'Review the hook'}),e=>e.code==='SOURCE_VIDEO_UNAVAILABLE'&&e.status===422&&/another.*video|attach/i.test(e.message));assert.equal(captured,0);
+ const next=await service({url,question:'Review another available capture'});assert.equal(next.mode,'ai');assert.equal(captured,1);
+ const unavailable=mod.createSourceVideoService(env,{inspect:async()=>({record,video:null}),capture:async()=>assert.fail('No browser for known missing geometry'),analyze:async()=>assert.fail('No provider for known missing geometry')});
+ const response=await handleApi(new Request('http://127.0.0.1:3000/api/videos/analyze',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url,question:'Review'})}),{...env,OPENREEL_LOCAL_REQUEST:true,OPENREEL_SOURCE_VIDEO:unavailable});assert.equal(response.status,422);const body=await response.json();assert.doesNotMatch(JSON.stringify(body),/controlled-test-key|installed.*runtime|private-stack/i);
+});

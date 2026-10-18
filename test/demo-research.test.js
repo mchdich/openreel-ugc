@@ -98,3 +98,18 @@ test('corpus video research retains different videos from the same creator',asyn
   assert.equal(result.kind,'research');assert.equal(result.sources.length,2);
  }finally{corpus.close();}
 });
+
+test('sampled-frame questions search the named clip and preserve separate profile constraints',async()=>{
+ const question='In the Fleur de Sel coffee clip, what do the sampled frames actually show? Distinguish visible objects from any action that is not established. Cite the source.';
+ const clip=normalizeRecords([{id:'salt',handle:'brewer',url:'https://www.tiktok.com/@brewer/video/7000000000000000011',sourceType:'test-fixture',fetchedAt:'2026-10-18T00:00:00Z',caption:'Coffee',visualDescription:'A hand holds a canister labeled Fleur de Sel near the mug; adding its contents is not established.',descriptionSource:'user-supplied',followers:2000,school:'UCLA',email:'brewer@example.com',bio:'UCLA brewer brewer@example.com'}])[0];
+ const plan=searchPlan(question);assert.deepEqual(plan.filters,{});assert.deepEqual(plan.terms,['fleur','de','sel','coffee']);assert.deepEqual(research([clip],question).sources.map(r=>r.id),['salt']);
+ const constrained='In the Fleur de Sel coffee clip, what do the sampled frames actually show? Only UCLA creators with at least 1000 followers and email in bio.';
+ const strict=searchPlan(constrained);assert.equal(strict.filters.school,'ucla');assert.equal(strict.filters.minFollowers,1000);assert.equal(strict.filters.emailInBio,true);
+ const {openCorpus}=await import('../lib/corpus.js');const corpus=openCorpus(':memory:');try{corpus.upsert([clip],{kind:'real'});const result=await(await handleApi(request({question,records:[],corpus:true}),{OPENREEL_CORPUS:corpus})).json();assert.deepEqual(result.sources.map(r=>r.id),['salt']);assert.equal(result.sources[0].visualDescription,clip.visualDescription);}finally{corpus.close();}
+});
+
+test('evidence instructions cannot discard profile constraints in their own sentence',()=>{
+ const question='In the Fleur de Sel coffee clip, what do the sampled frames actually show? Distinguish visible objects from inferred actions, using only UCLA creators with at least 1000 followers and email in bio.';
+ const records=normalizeRecords([{id:'eligible',handle:'eligible',caption:'Fleur de Sel coffee',school:'UCLA',followers:2000,email:'yes@example.com',bio:'UCLA yes@example.com'},{id:'excluded',handle:'excluded',caption:'Fleur de Sel coffee',school:'Yale',followers:5}]);
+ for(const q of [question,question.replace(', using only',' using only')]){const plan=searchPlan(q);assert.equal(plan.filters.school,'ucla');assert.equal(plan.filters.minFollowers,1000);assert.equal(plan.filters.emailInBio,true);assert.deepEqual(research(records,q).sources.map(r=>r.id),['eligible']);}
+});
