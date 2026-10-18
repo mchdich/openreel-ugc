@@ -145,3 +145,26 @@ test('audio transcription advertises explicit configuration and guards public pr
   const missing=await handleApi(req({audio:{}}),{});assert.equal(missing.status,400);
   assert.match((await missing.json()).error,/audio|WAV/i);
 });
+
+test('ordinary sentence punctuation after supplied handles and URLs preserves AI synthesis',async()=>{
+ const old=globalThis.fetch;
+ try{for(const [source,summary] of [[{...record,handle:'@a.b'},'The matched creator is @a.b.'],[{...record,url:'https://creator.example/known'},'See https://creator.example/known.']]){
+  globalThis.fetch=async()=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({summary,sections:[]})}}]}));
+  const result=await(await handleApi(request({question:'Find beauty creators',records:[source]}),{OPENAI_API_KEY:'private-test-key'})).json();assert.equal(result.mode,'ai');assert.equal(result.summary,summary);
+ }}finally{globalThis.fetch=old;}
+});
+
+test('a prefix of a supplied contact is still ungrounded and rejected replies are distinct from provider outages',async()=>{
+ const old=globalThis.fetch;
+ try{for(const [source,summary] of [[{...record,handle:'@averylongname'},'The creator is @avery'],[{...record,url:'https://creator.example/known-long'},'See https://creator.example/known']]){
+  globalThis.fetch=async()=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({summary,sections:[]})}}]}));
+  const result=await(await handleApi(request({question:'Find beauty creators',records:[source]}),{OPENAI_API_KEY:'private-test-key'})).json();assert.equal(result.mode,'deterministic');assert.match(result.notice,/AI reply could not be verified/);assert.doesNotMatch(result.notice,/provider is unavailable/);assert.notEqual(result.summary,summary);
+ }}finally{globalThis.fetch=old;}
+});
+
+test('provider body transport failures remain outages while malformed delivered JSON is an unverifiable reply',async()=>{
+ const old=globalThis.fetch;
+ try{for(const [response,pattern] of [[()=>new Response(new ReadableStream({start(c){c.error(new TypeError('private-body-secret'));}})),/provider is unavailable/],[()=>new Response('{"choices":'),/AI reply could not be verified/],[()=>new Response(new ReadableStream({start(c){c.error(new TypeError('private-body-secret'));}}),{status:502}),/provider is unavailable/]]){
+  globalThis.fetch=async()=>response();const result=await(await handleApi(request({question:'Find beauty creators',records:[record]}),{OPENAI_API_KEY:'private-test-key'})).json();assert.equal(result.mode,'deterministic');assert.match(result.notice,pattern);assert.doesNotMatch(JSON.stringify(result),/private-body-secret|private-test-key/);
+ }}finally{globalThis.fetch=old;}
+});

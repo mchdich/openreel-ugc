@@ -8,7 +8,7 @@ The browser library accepts up to **2,000 records**. Optional [SQLite corpus sto
 
 Acquisition paths are JSON/CSV imports, official direct-video oEmbed metadata, free official creator embeds, optional canonical public-post metadata, web-assisted handle proposals with independent profile verification, and configured Apify keyword discovery. Public creator collection provides currently exposed videos and profile snapshots; it does not discover every creator or retrieve complete histories. No source-video download or URL transcription is performed.
 
-The normal local corpus contains **154,452 real records across 4,627 creator identities**, including 290 provider-observed records. The optional 150,000-record research archive supplies upstream transcripts/visual descriptions under its separate CC-BY-NC license. A separate synthetic capacity benchmark supplies no real evidence. See [CORPUS.md](CORPUS.md) and [RESEARCH_DATA.md](RESEARCH_DATA.md) for exact sources and limits.
+The normal local corpus contains **154,462 real records across 4,627 creator identities**, including 300 provider-observed records. The optional 150,000-record research archive supplies upstream transcripts/visual descriptions under its separate CC-BY-NC license. A separate synthetic capacity benchmark supplies no real evidence. See [CORPUS.md](CORPUS.md) and [RESEARCH_DATA.md](RESEARCH_DATA.md) for exact sources and limits.
 
 ## Import JSON or CSV
 

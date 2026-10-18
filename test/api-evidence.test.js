@@ -16,7 +16,7 @@ test('invented source IDs and malformed rationale fall back to grounded determin
  for(const extra of [{sourceIds:['imaginary']},{sourceIds:'real-source'},{rationale:{text:'x'.repeat(2001)}},{rationale:'causal claim'}]){
   await withFetch(async()=>completion({summary:'Grounded prose.',sections:[{heading:'Pattern',text:'Supplied evidence.',...extra}]}),async()=>{
    const response=await handleApi(req('/api/chat',{question:'Analyze beauty hooks',records:[record]},'localhost'),{OPENAI_API_KEY:'test-only'});
-   const value=await response.json();assert.equal(value.mode,'deterministic');assert.match(value.notice,/unavailable/i);assert.doesNotMatch(JSON.stringify(value),/imaginary/);
+   const value=await response.json();assert.equal(value.mode,'deterministic');assert.match(value.notice,/AI reply could not be verified/);assert.doesNotMatch(JSON.stringify(value),/imaginary/);
   });
  }
 });

@@ -381,7 +381,7 @@ export function research(records, question, history = [], {reference,sourceQuery
   let trends = [];
   if (kind === 'creators') {
     title = 'Creators that match your brief';
-    summary = sources.length ? `I found ${sources.length} matching creator${sources.length === 1 ? '' : 's'} in the ${records.length}-video library. Every profile and contact below comes from your records.` : 'No creators in the current library match all of those filters. Try another school, location or follower range, or import more records.';
+    summary = sources.length ? `I found ${sources.length} matching creator${sources.length === 1 ? '' : 's'} among ${records.length} supplied video records. Every profile and contact below comes from those sources.` : 'No creators in the supplied records match all of those filters. Try another school, location or follower range, or import more records.';
     sections.push({ heading: 'How these matches were selected', text: 'School, location, follower range and public email requirements are applied together. Follower bounds keep their requested inclusivity. Contacts appear only when explicitly supplied; school and location labels retain their public-bio self-description evidence.' });
     if(similarity){
       title='Creators with similar content evidence';

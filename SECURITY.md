@@ -55,3 +55,5 @@ Browser `localStorage` and exports are unencrypted. Same-origin scripts and anyo
 There is no dedicated security email or guaranteed response SLA. Use the repository’s private **Security → Report a vulnerability** flow if enabled, otherwise a published private owner contact. Do not post credentials, private records or public-deployment exploit details in a public issue.
 
 Include the affected revision, provider/storage mode, minimal fictional-data reproduction, expected behavior and impact. Revoke leaked keys/tokens at their issuer and replace server secrets. No independent security audit or long-term support policy is claimed.
+
+Metadata priority consults only independently verified primary dates via bounded bulk reads. Internally inspected observations may be indexed beyond displayed creator results, within a 36-row union; the internal rows are stripped from discovery JSON and every displayed filter still applies. Synthesis compares exact supplied contact tokens with terminal prose punctuation handling, rejects unknown prefixes, and distinguishes reply validation failures from transport outages without exposing provider errors.

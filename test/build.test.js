@@ -76,3 +76,25 @@ test('portable Worker binds its hosted corpus through D1 without runtime schema 
     }finally{globalThis.fetch=postFetch;}
   }finally{db.close();}
 });
+
+test('generated Worker grows dated coverage across creator-deduplicated searches without leaking internal rows',async()=>{
+ const {DatabaseSync}=await import('node:sqlite'),db=new DatabaseSync(':memory:');db.exec(await readFile(new URL('../drizzle/0000_corpus.sql',import.meta.url),'utf8'));
+ let queries=0;
+ const binding={prepare(sql){queries++;return {bind(...p){return {all:async()=>({success:true,results:db.prepare(sql).all(...p)}),first:async()=>db.prepare(sql).get(...p)||null};}};},batch:async statements=>Promise.all(statements.map(s=>s.all()))};
+ const original=globalThis.fetch,checked=[];
+ try{
+  const {openWorkerCorpus}=await import('../lib/corpus-worker.js');await openWorkerCorpus(binding).upsert([{id:'tiktok-22001',creatorId:'22000',handle:'@incrementbuild',url:'https://www.tiktok.com/@incrementbuild/video/22001',caption:'Coffee creator fixture',sourceType:'tiktok-creator-embed',fetchedAt:'2024-01-01T00:00:00.000Z',demo:false}],{kind:'real',source:'controlled seed',verification:'provider-observed'});
+  globalThis.fetch=async url=>{
+   if(url.endsWith('/embed/@incrementbuild'))return new Response('<script id="__FRONTITY_CONNECT_STATE__">'+JSON.stringify({source:{data:{'/embed/@incrementbuild':{isReady:true,isError:false,userInfo:{id:'22000',uniqueId:'incrementbuild',code:200,privateAccount:false,signature:'Coffee creator',followerCount:1500},videoList:Array.from({length:8},(_,i)=>({id:String(22001+i),desc:'Coffee fixture',privateItem:false,authorUniqueId:'incrementbuild',playCount:100}))}}}})+'</script>',{headers:{'content-type':'text/html'}});
+   assert.match(url,/^https:\/\/www\.tiktok\.com\/@incrementbuild\/video\/2200[1-8]$/);const id=url.split('/').at(-1);checked.push(id);
+   return new Response('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({__DEFAULT_SCOPE__:{'webapp.video-detail':{statusCode:0,itemInfo:{itemStruct:{id,privateItem:false,createTime:'1728000000',desc:'Coffee fixture',author:{id:'22000',uniqueId:'incrementbuild',privateAccount:false,signature:'Coffee creator'},authorStats:{followerCount:1500},stats:{playCount:120}}}}}})+'</script>',{headers:{'content-type':'text/html'}});
+  };
+  const {default:worker}=await import(new URL('../dist/server/index.js',import.meta.url));
+  for(const [round,dated] of [[0,6],[1,8]]){
+   queries=0;const response=await worker.fetch(new Request('https://increment-build.example/api/videos/discover',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({query:'Find coffee creators'})}),{DB:binding,OPENREEL_POST_METADATA:'true'});
+   assert.equal(response.status,200);const body=await response.json();assert.equal(body.records.length,1);assert.equal(body.observedRecords,undefined);assert.equal(body.indexing.additionalInspected,5);assert.ok(queries<=50);assert.equal(body.postMetadata.selectedUndated,round?2:6);
+   assert.equal(db.prepare("SELECT count(*) AS n FROM corpus_videos WHERE json_extract(record_json,'$.postedAt')<>''").get().n,dated);
+  }
+  assert.deepEqual(checked.slice(6,8),['22002','22001']);assert.equal(checked.length,12);
+ }finally{globalThis.fetch=original;db.close();}
+});

@@ -83,3 +83,10 @@ test('Research this format binds its pattern source and clears an unrelated pend
     assert.equal(runInContext('active().messages.at(-1).researchSource',context),pattern);
   }
 });
+
+test('deterministic answer labels retain each saved source when the current composer source changes',async()=>{
+ const context=await composerContext();
+ const messages=['library','corpus','live','video'].map(researchSource=>({role:'assistant',researchSource,result:answer([])}));
+ runInContext(`state.activeId='labels';state.conversations=[{id:'labels',source:'library',messages:${JSON.stringify(messages)}}];sourceMode='library';`,context);
+ const labels=runInContext('renderChat()',context).matchAll(/class="pill-label">([^<]+)</g);assert.deepEqual([...labels].map(m=>m[1]),['Library research','Corpus research','Live research','Video analysis']);
+});
