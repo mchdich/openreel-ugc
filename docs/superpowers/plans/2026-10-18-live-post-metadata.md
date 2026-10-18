@@ -39,7 +39,7 @@ Files: `lib/live.js`, `lib/web-discovery.js`, `lib/api.js`, `public/app.js`, `sc
 
 - [x] Run actual browser Live topic and compound creator requests without response substitutes, inspect every supplied date/source/filter, capture progress/source/reload/mobile and true corpus delta. Record any upstream failures.
 - [x] Run a current dated comparison; do not claim emergence unless actual multi-creator evidence proves it. Unrestricted discovery, ongoing corpus refresh and representative audiovisual analysis remain part of the full goal.
-- [ ] Independent review, documentation, staged secret/data scan, public source/archive and exact-commit CI. Keep hosted credential/local boundary intact.
+- [x] Independent review, documentation and staged secret/data scan. Published implementation commit `68680a4`; its public CI passed. Final source archive and exact release commit/CI are recorded in the release artifact. Keep hosted credential/local boundary intact.
 
 ## Actual-run corrections
 
