@@ -1,4 +1,4 @@
-# Local demo verification — 1.5.1
+# Local demo verification — 1.5.2
 
 Verified October 18, 2026, against the real local Node app at http://127.0.0.1:3000 with an OpenAI API key stored only in ignored server configuration. Text and vision use GPT-5.4 mini; transcription uses whisper-1. No provider responses were substituted in the browser acceptance runs.
 
@@ -23,9 +23,28 @@ The tested research, writing, creator-filter and upload paths work. **Full equiv
 - Bookmarks survived reload. The tested 390 × 844 layout had no horizontal overflow.
 - Vision: camera framing such as package view at a timestamp is distinguished from claimed social views. Actual metric assertions and unobserved timestamps still reject. An invalid model narrative gets at most one correction attempt within the original deadline; a second invalid answer remains an error.
 
+## Adaptive video sampling (1.5.2)
+
+The old eight fixed timestamps missed a one-second visual change at 4–5 seconds in a generated 12.1-second test clip. The updated browser flow inspects at most 128 tiny frames locally and selects up to eight JPEGs, preserving the opening and ending. Distinct visual states fill the remaining slots before temporal coverage. Descriptors are never sent to the provider or saved in the attachment.
+
+The actual decoded JPEGs now include the green product-reveal card at 4.332 seconds. The app's real `/api/video/analyze` request sent that selected frame, returned HTTP 200 in 3.9 seconds, and identified the blue-to-green-to-blue change. No frame data persisted in browser storage; no page errors occurred. This generated fixture is regression evidence, not real creator footage or corpus coverage. The natural-footage inference recorded below remains a separate check.
+
+The repeatable browser script generates its own fixture and makes no AI calls. With the local app running and Playwright/Chromium already installed:
+
+```sh
+node scripts/verify-video-sampling.js \
+  --playwright-module /absolute/path/to/playwright \
+  --browser-path /absolute/path/to/chrome \
+  --base-url http://127.0.0.1:3000
+```
+
+The actual repeat run selected the reveal at 4.337 seconds, emitted eight JPEGs, completed inspection/verification in 101 ms on this small fixture, and passed cancellation and progress bounds. Timing depends on clip and device. RGB novelty is not semantic recognition; the scan and output caps can still miss brief states, motion, cuts or pacing.
+
+The final speech-bearing upload repeat returned HTTP 200 for transcription, critique and its shot-list follow-up, with the first answer arriving in 23.0 seconds from attachment start and no page errors. Its advice also inferred slow pacing from similar stills; that inference does not establish intervening cuts or continuous timing. This remains an open critique-quality limit despite the successful transport and follow-up checks.
+
 ## Final checks
 
-- Node: 305 tests passed, zero failures.
+- Node: 309 tests passed, zero failures, including four new visual-selection regressions.
 - Python: 17 passed, one optional test skipped.
 - Portable Worker build completed; publication of this revision to Sites was not requested.
 - The complete browser upload test returned HTTP 200 for transcription and both vision turns. Its first answer arrived about 20.2 seconds after file attachment started.
@@ -38,5 +57,7 @@ The tested research, writing, creator-filter and upload paths work. **Full equiv
 A current-week cooking-trend request found no dated records in its comparison windows. The app now reports that gap instead of calling 2024 examples current. The recurring-pattern browser describes its bounded archival sample and is not proof of an emerging trend today.
 
 An actual OpenAI web-search probe returned TikTok topic/channel pages without verifiable individual post links or October 2026 dates. That probe was not integrated or presented as broad discovery. A larger continuously refreshed index or a functioning discovery provider is still needed for the original broad-search and early-trend claims.
+
+A further UCLA/contact profile-search probe returned no usable public profile or post URLs. Official public creator embeds returned fresh selected videos and metrics but no posting-date field. These checks do not close current-date or unrestricted discovery coverage.
 
 Uploaded video analysis uses sampled stills plus an optional machine transcript. It does not process continuous footage or provide raw acoustics to the vision model. New editing advice is a proposal, not a demonstrated performance improvement.
