@@ -2,7 +2,7 @@
 
 The Node corpus stores normalized video records in SQLite; the Worker uses the asynchronous D1 adapter. Both index captions, transcripts, separately labeled visual descriptions, hooks, niches, public bios, schools, locations and actual handles with FTS5. Local iterable imports exceed the browser's 2,000-record limit; hosted writes use explicit bounded batches. Both return bounded ranked result pages.
 
-**The normal local product corpus now has 154,428 real records across 4,624 creator identities, with 266 provider-observed records and zero example, synthetic or unverified rows.** Product API queries and native browser bookmark/reload have been verified against it. The separately verified hosted D1 seed remains 4,424 records. The synthetic capacity benchmark below is a different dataset and does not supply real evidence.
+**The normal local product corpus now has 154,430 real records across 4,626 creator identities, with 268 provider-observed records and zero example, synthetic or unverified rows.** Product API queries and native browser bookmark/reload have been verified against it. The separately verified hosted D1 seed remains 4,424 records. The synthetic capacity benchmark below is a different dataset and does not supply real evidence.
 
 ## Runtime and storage
 
